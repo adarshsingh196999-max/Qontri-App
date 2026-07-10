@@ -1,0 +1,96 @@
+I want to make a app that has the splitting feature if a group of friend plan something 
+
+📱 Expense Splitting App – Product & Technical Document
+1. 🎯 Product Overview
+This application is a group expense management platform designed to simplify how users split, track, and settle shared expenses.
+The goal is to provide a faster, simpler, and more intuitive alternative to apps like Splitwise, with a focus on:
+
+Ease of use
+Real-time balance tracking
+Smart splitting features
+Local payment integration (UPI-ready)
+👥 Target Users
+
+Friends planning trips or outings
+Flatmates sharing household expenses
+Sports teams (e.g., cricket teams managing match expenses)
+Small groups managing shared costs
+🚀 Core Features (MVP)
+3.1 User Authentication
+
+Phone number login (OTP-based)
+Basic profile setup (name, email optional)
+3.2 Group Management
+
+Create group (e.g., Trip, Party, Team)
+Add/remove members
+Assign roles (admin/member)
+3.3 Expense Management
+
+Add expense with:
+Amount
+Paid by
+Participants
+Notes (optional)
+Split types:
+ 
+Equal split
+Unequal split
+Percentage split
+Exact amount split 3.4 Balance Calculation
+
+Real-time calculation of:
+Who owes whom
+Net balances per user
+Debt simplification logic to minimize transactions
+3.5 Settlement
+
+Record payments between users
+Mark expenses as settled
+Support payment modes (Cash, UPI, Bank transfer)
+3.6 Notifications
+
+Expense added alerts
+Payment reminders
+Settlement confirmations
+⭐ Advanced Features (Post-MVP)
+4.1 Smart Splitting
+
+Auto-suggest splits based on past behavior
+4.2 Chat Integration
+
+Group chat alongside expense tracking
+4.3 Analytics Dashboard
+
+Spending insights
+Category-wise breakdown
+Monthly summaries
+4.4 UPI Integration (India-focused)
+
+One-click payments via UPI apps
+4.5 Receipt Scanner
+
+Upload bill → auto-detect items and split
+4.6 Niche Mode (Sports/Tournament)
+
+Track team expenses
+Ground fees, equipment, umpire costs
+🏗️ Technical Architecture
+5.1 Frontend
+
+Framework: React Native or Flutter
+Platforms: Android + iOS
+5.2 Backend
+
+Option 1: Node.js (Express)
+Option 2: Firebase (for faster MVP)
+5.3 Database
+
+PostgreSQL (recommended for scalability) OR
+Firebase Firestore (for quick deployment)
+5.4 Authentication
+
+OTP-based login system
+5.5 Hosting & Infrastructure
+
+AWS / Google Cloud / Firebase Hosting

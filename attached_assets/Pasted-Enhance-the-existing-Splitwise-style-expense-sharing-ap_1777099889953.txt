@@ -1,0 +1,194 @@
+Enhance the existing Splitwise-style expense sharing app by adding a new feature called “Group Banter & Dynamic Roles”.
+
+This should be implemented as an add-on module without modifying existing core expense or settlement logic.
+
+---
+
+## OBJECTIVE
+
+Introduce a system that:
+
+* Analyzes user behavior within each group
+* Assigns dynamic roles (based on relative rankings inside the group)
+* Generates real-time banter messages triggered by events
+
+This feature must be event-driven, not time-based.
+
+---
+
+## BACKEND CHANGES
+
+### 1. Create a new service: groupInsightsService
+
+This service should:
+
+* Accept groupId
+
+* Fetch all expenses and settlements for that group
+
+* Compute per-user metrics:
+
+  * total_paid
+  * total_owed
+  * number_of_expenses_added
+  * average_settlement_time
+
+* Rank users within the group:
+
+  * highest payer
+  * highest owed
+  * fastest settler
+  * most active (expense creator)
+
+---
+
+### 2. Role Assignment Logic
+
+Assign one role per user based on rankings:
+
+* highest total_paid → "The ATM"
+* highest total_owed → "The Borrower"
+* fastest settlement → "Flash Pay"
+* most expenses added → "The Tracker"
+* closest to balanced → "The Equalizer"
+
+Store roles in-memory or cache (no need for permanent storage initially).
+
+---
+
+### 3. Banter System
+
+Create a new collection/table:
+
+Banter
+
+* groupId
+* message
+* createdAt
+
+---
+
+### 4. Event-Based Triggers
+
+Hook into existing flows:
+
+When an expense is added:
+
+* Recalculate group metrics
+* Detect changes in rankings
+* If role changes → generate banter message
+
+When a settlement is made:
+
+* Recalculate metrics
+* Detect:
+
+  * fast payment
+  * long pending cleared
+* Generate banter
+
+---
+
+### 5. Banter Message Generator
+
+Create a utility function that returns randomized messages.
+
+Examples:
+
+For ATM:
+
+* "{user} just became the ATM 🏦"
+* "{user} is funding everyone again 💸"
+
+For Borrower:
+
+* "{user} is leading in dues 😏"
+* "{user}, bro… time to pay?"
+
+For big expense:
+
+* "Big spender alert 💸"
+
+Ensure:
+
+* Messages are fun, not offensive
+* Use multiple variations to avoid repetition
+
+---
+
+### 6. APIs
+
+Add new endpoints:
+
+GET /groups/:groupId/insights
+→ Returns:
+
+* users with roles
+* rankings
+* stats
+
+GET /groups/:groupId/banter
+→ Returns latest banter messages
+
+---
+
+## FRONTEND CHANGES
+
+### 1. Group Screen Enhancement
+
+Add 2 new sections:
+
+---
+
+### A. Group Vibes
+
+Display all users with:
+
+* Name
+* Current role badge (e.g., ATM, Borrower)
+
+---
+
+### B. Banter Feed
+
+* Show list of banter messages (like chat)
+* Auto-update when new messages are generated
+
+---
+
+### 2. Real-Time Updates (if supported)
+
+If sockets already exist:
+
+* Emit event when:
+
+  * role changes
+  * new banter added
+
+Otherwise:
+
+* Poll every few seconds
+
+---
+
+## DESIGN RULES
+
+* Keep tone fun and playful (like WhatsApp group banter)
+* Avoid negative or toxic wording
+* Roles must always be relative within group (no global comparison)
+
+---
+
+## PERFORMANCE
+
+* Do not recompute everything unnecessarily
+* Trigger recalculation only on:
+
+  * new expense
+  * settlement
+
+---
+
+## GOAL
+
+Increase engagement by making the app feel social and interactive, not just transactional.

@@ -1,0 +1,6 @@
+- [GET /groups payload index bug](groups-payload-index-bug.md) — CRITICAL: payloads must be matched to groups by ID not array index; SQL inArray() does not preserve order.
+- [Alert.alert broken in Replit iframe](alert-modal.md) — cross-origin iframe silently blocks Alert.alert; use ConfirmModal for all confirmations.
+- [expo-camera version lock](expo-camera.md) — must stay at ^17.0.10; later versions crash with createPermissionHook error on web.
+- [React Native Image pointerEvents](rn-image-pointer.md) — Image has no pointerEvents prop; wrap in <View pointerEvents="none"> instead.
+- [Express 5 params typing](express5-params.md) — req.params values typed as `string | string[]`; always cast with `as string` before passing to Drizzle eq()/inArray().
+- [Qontri QR invite format](qontri-qr-format.md) — QR codes encode `{"q":"qontri","tag":"#NNNN"}` JSON; scanner parses this and calls joinGroup(tag) via API.
