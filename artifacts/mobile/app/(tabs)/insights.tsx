@@ -513,8 +513,7 @@ function AddExpenseModal({
 export default function IETScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { token } = useMockAuth();
-  const [tab, setTab] = useState<Tab>("overview");
+const { token, user } = useMockAuth();  const [tab, setTab] = useState<Tab>("overview");
   const [expenses, setExpenses] = useState<IETExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -539,31 +538,45 @@ export default function IETScreen() {
     } catch {} finally { setLoading(false); }
   }, [token, authHeader]);
 
-  useEffect(() => { loadExpenses(); }, [loadExpenses]);
-
-  useEffect(() => {
-    if (!token) return;
-    // Load budget from server (authoritative — syncs across all devices)
-    fetch(`${API_BASE}/iet/budget`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() as Promise<{ budget: number }> : null)
+useEffect(() => {
+    if (!token || !user?.id) return;
+    
+    // Ask the server for the user's saved budget
+    fetch(`${API_BASE}/auth/me`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    })
+      .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        if (data && typeof data.budget === "number") setBudget(data.budget);
+        // If Neon has a budget saved, we fill it in here
+        if (data?.user?.monthlyBudget) {
+          setBudget(parseFloat(data.user.monthlyBudget));
+        }
       })
-      .catch(() => {});
-  }, [token]);
+      .catch((err) => console.error("Failed to load budget from Neon:", err));
+  }, [token, user?.id]);
 
-  const saveBudget = (val: number) => {
-    setBudget(val);
-    // Persist to server only — syncs across all devices
-    if (token) {
-      fetch(`${API_BASE}/iet/budget`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ budget: val }),
-      }).catch(() => {});
+ const saveBudget = (val: number) => {
+    setBudget(val); // Update UI instantly so it feels fast
+    
+    if (token && user?.id) {
+      // Send the new amount to your new Railway mailbox
+      fetch(`${API_BASE}/auth/update-budget`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          userId: user.id, 
+          amount: val 
+        }),
+      })
+      .then(res => {
+        if(res.ok) console.log("Budget permanently synced to Neon");
+      })
+      .catch((err) => console.error("Cloud sync failed:", err));
     }
   };
-
   const handleAddExpense = useCallback(async (entry: Omit<IETExpense, "id" | "createdAt">) => {
     if (!token) return;
     setSaving(true);

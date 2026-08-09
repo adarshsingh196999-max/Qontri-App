@@ -217,3 +217,9 @@ export const insertTripSchema = createInsertSchema(tripsTable).omit({
 });
 export type InsertTrip = z.infer<typeof insertTripSchema>;
 export type Trip = typeof tripsTable.$inferSelect;
+
+export const otpsTable = pgTable("otps", {
+  email: text("email").primaryKey(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+});

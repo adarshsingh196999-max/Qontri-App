@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Resend } from "resend";
-import { db, usersTable, userProfilesTable } from "@workspace/db";
+import { db, usersTable, userProfilesTable, otpsTable } from "@workspace/db"; // Add otpsTable hereimport { eq } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { createSession } from "../middlewares/requireAuth";
 
@@ -32,29 +32,67 @@ function cleanupExpired() {
   }
 }
 
+// 1. SEND OTP (Saves to Neon Database)
 router.post("/auth/send-otp", async (req, res) => {
-  console.log("========== SEND OTP ROUTE HIT ==========");
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+  
+  const normalizedEmail = email.toLowerCase().trim();
+  const code = generateOtp(); // your existing generate function
+  const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes from now
 
-  const { email } = req.body as { email?: string };
+  try {
+    // Save or update the OTP in Neon
+    await db.insert(otpsTable)
+      .values({ email: normalizedEmail, code, expiresAt })
+      .onConflictDoUpdate({
+        target: otpsTable.email,
+        set: { code, expiresAt }
+      });
 
-  if (!email || !email.includes("@")) {
-    res.status(400).json({ error: "Valid email required" });
-    return;
+    console.log(`OTP for ${normalizedEmail}: ${code}`); // Log for testing
+    await sendEmail(normalizedEmail, code); // your existing send function
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error("OTP Send Error:", err);
+    res.status(500).json({ error: "Failed to send OTP" });
   }
+});
 
-  const normalized = email.trim().toLowerCase();
-  cleanupExpired();
+// 2. VERIFY OTP (Checks Neon Database)
+router.post("/auth/verify-otp", async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
 
-  const code = generateOtp();
-  otpStore.set(normalized, {
-    code,
-    expiresAt: Date.now() + 10 * 60 * 1000,
-    attempts: 0,
-  });
+  const normalizedEmail = email.toLowerCase().trim();
 
-  if (IS_DEV) {
-    req.log.info({ email: normalized, code }, "DEV: OTP code (check logs to verify)");
+  try {
+    const [entry] = await db.select()
+      .from(otpsTable)
+      .where(eq(otpsTable.email, normalizedEmail));
+
+    if (!entry || entry.code !== code) {
+      return res.status(400).json({ error: "Invalid code found. Please request a new one." });
+    }
+
+    if (new Date() > entry.expiresAt) {
+      return res.status(400).json({ error: "Code has expired. Please request a new one." });
+    }
+
+    // Success! Delete the OTP so it's a one-time use
+    await db.delete(otpsTable).where(eq(otpsTable.email, normalizedEmail));
+
+    // ... Keep your existing user creation/token logic here ...
+    // Example:
+    const token = await createSession(normalizedEmail);
+    res.json({ success: true, token });
+
+  } catch (err) {
+    console.error("OTP Verify Error:", err);
+    res.status(500).json({ error: "Verification failed" });
   }
+});
 
   try {
     await resend.emails.send({

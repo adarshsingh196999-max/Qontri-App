@@ -1,12 +1,43 @@
 {
   "expo": {
+    "name": "Qontri",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "privacy": "public",
+    "owner": "adarsh196",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1628"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.adarsh196.qontri",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0A1628"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d08e4963-3e28-404a-9675-ccb760c590fe"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
+    ],
     "extra": {
       "eas": {
         "projectId": "d08e4963-3e28-404a-9675-ccb760c590fe"
       }
-    },
-    "android": {
-      "package": "com.adarsh196.workspace"
     }
   }
 }
