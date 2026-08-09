@@ -147,5 +147,21 @@ router.post("/auth/verify-otp", async (req, res) => {
   const token = await createSession(normalized);
   res.json({ success: true, token, isNewUser });
 });
+// NEW: Route to update the user's monthly budget
+router.post("/update-budget", async (req, res) => {
+  const { userId, amount } = req.body;
 
+  try {
+    // This uses Drizzle to update the column we added to Neon
+    await db
+      .update(usersTable)
+      .set({ monthlyBudget: amount.toString() }) // Save as string for decimal safety
+      .where(eq(usersTable.id, userId));
+
+    res.status(200).json({ success: true, message: "Budget saved to cloud" });
+  } catch (error) {
+    console.error("Budget Update Error:", error);
+    res.status(500).json({ error: "Failed to update budget" });
+  }
+});
 export default router;

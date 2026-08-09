@@ -1,14 +1,11 @@
 {
   "expo": {
-    "name": "Qontri",
+    "name": "mobile",
     "slug": "mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "runtimeVersion": "1.0.0",
+    "privacy": "public",
+    "owner": "adarsh196",
     "updates": {
       "url": "https://u.expo.dev/3ef85cd4-0471-4761-888a-f329de9e8e4f",
       "checkAutomatically": "ON_LOAD",
@@ -29,15 +26,21 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
-      ],
+      "expo-router",
       "expo-font",
       "expo-web-browser",
-      "./plugins/withAndroidPackaging"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "packagingOptions": {
+              "pickFirst": [
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+              ]
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

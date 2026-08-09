@@ -1,4 +1,5 @@
 import {
+  decimal,
   doublePrecision,
   pgTable,
   primaryKey,
@@ -16,6 +17,7 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull().unique(),
   blockedAt: timestamp("blocked_at"),
   lastLoginAt: timestamp("last_login_at"),
+  monthlyBudget: decimal("monthly_budget", { precision: 10, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
