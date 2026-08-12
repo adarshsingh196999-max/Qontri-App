@@ -13,23 +13,14 @@ function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// 1. SEND OTP (Database Backed)
+// 1. SEND OTP
 router.post("/auth/send-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email is required" });
 
   const normalizedEmail = email.toLowerCase().trim();
-
-    // Support a test-login bypass before touching the DB when explicitly enabled.
-    const _enableTest = String(process.env["ENABLE_TEST_LOGIN"] ?? "").toLowerCase();
-    const enableTestLogin = _enableTest === "true" || _enableTest === "1" || _enableTest === "yes";
-    if (enableTestLogin && normalizedEmail === "testuser@qontri.in" && code === "999999") {
-      // create and return a session token for the tester without DB verification
-      const token = await createSession(normalizedEmail);
-      return res.json({ success: true, token });
-    }
   const code = generateOtp();
-  const expiresAt = new Date(Date.now() + 10 * 60000); // 10 mins
+  const expiresAt = new Date(Date.now() + 10 * 60000); 
 
   try {
     await db.insert(otpsTable)
@@ -53,41 +44,26 @@ router.post("/auth/send-otp", async (req, res) => {
   }
 });
 
-// 2. VERIFY OTP (Database Backed)
-// 2. VERIFY OTP (Database Backed)
+// 2. VERIFY OTP (With Reviewer Bypass)
 router.post("/auth/verify-otp", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // --- THE ABSOLUTE FORCE FIX ---
+  // --- REVIEWER BYPASS ---
   if (normalizedEmail === "testuser@qontri.in" && code === "999999") {
     const token = await createSession("testuser@qontri.in");
     return res.json({ success: true, token });
   }
-  // ------------------------------
 
-  try {
-    // Your existing database logic (db.select from otpsTable, etc.) should continue here
-    // BUT make sure you don't declare 'normalizedEmail' or 'email' again!
-  // Temporary debug logging to inspect incoming verify-otp requests.
-  // Remove or guard this in production.
-  try {
-    console.log("[DEBUG verify-otp] incoming body:", req.body);
-    console.log("[DEBUG verify-otp] remote ip:", req.ip || req.headers["x-forwarded-for"] || "unknown");
-    console.log("[DEBUG verify-otp] ENABLE_TEST_LOGIN=", process.env["ENABLE_TEST_LOGIN"]);
-  } catch (e) {
-    // ignore logging errors
-  }
-  
   try {
     const [entry] = await db.select()
       .from(otpsTable)
       .where(eq(otpsTable.email, normalizedEmail));
 
     if (!entry || entry.code !== code) {
-      return res.status(400).json({ error: "Invalid code found. Please request a new one." });
+      return res.status(400).json({ error: "Invalid code. Please request a new one." });
     }
 
     if (new Date() > entry.expiresAt) {
@@ -105,19 +81,18 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 });
 
-// 3. UPDATE BUDGET (Database Backed)
+// 3. UPDATE BUDGET
 router.post("/update-budget", async (req, res) => {
   const { userId, amount } = req.body;
-
   try {
     await db.update(usersTable)
       .set({ monthlyBudget: amount.toString() })
       .where(eq(usersTable.id, userId));
 
-    res.status(200).json({ success: true, message: "Budget saved to cloud" });
+    res.status(200).json({ success: true });
   } catch (error) {
     console.error("Budget Update Error:", error);
-    res.status(500).json({ error: "Failed to update budget" });
+    res.status(500).json({ error: "Failed to save budget" });
   }
 });
 
