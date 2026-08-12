@@ -143,8 +143,17 @@ router.get("/iet/budget", requireAuth, async (req, res) => {
 
 router.put("/iet/budget", requireAuth, async (req, res) => {
   const email = req.user!.email;
-  const { budget } = req.body as { budget?: number };
-  if (typeof budget !== "number" || budget < 0) {
+  const rawBudget = req.body?.budget;
+  const budget = typeof rawBudget === "string"
+    ? parseFloat(rawBudget.replace(/,/g, "").trim())
+    : rawBudget;
+
+  if (rawBudget === undefined || rawBudget === null) {
+    res.status(400).json({ error: "budget is required" });
+    return;
+  }
+
+  if (typeof budget !== "number" || Number.isNaN(budget) || budget < 0) {
     res.status(400).json({ error: "budget must be a non-negative number" });
     return;
   }

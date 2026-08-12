@@ -14,11 +14,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, G } from "react-native-svg";
 
 import { CATEGORY_LIST, getCategoryColor, getCategoryIcon } from "@/components/CategoryBadge";
-import { DatePickerField } from "@/components/DatePickerField";
+import { DatePickerField } from "../../components/DatePickerField";
 import { useMockAuth } from "@/context/MockAuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -325,7 +326,7 @@ function BudgetModal({
 }: {
   visible: boolean;
   current: number;
-  onSave: (val: number) => void;
+  onSave: (val: number) => Promise<void> | void;
   onClose: () => void;
 }) {
   const colors = useColors();
@@ -335,10 +336,33 @@ function BudgetModal({
     if (visible) setInput(current > 0 ? String(current) : "");
   }, [visible, current]);
 
-  const handleSave = () => {
-    const val = parseFloat(input);
-    onSave(isNaN(val) || val <= 0 ? 0 : val);
-    onClose();
+  const handleSave = async () => {
+    const raw = input.replace(/,/g, "").trim().toLowerCase();
+    let multiplier = 1;
+    let normalized = raw;
+
+    if (normalized.endsWith("k")) {
+      multiplier = 1000;
+      normalized = normalized.slice(0, -1).trim();
+    } else if (normalized.endsWith("m")) {
+      multiplier = 1000000;
+      normalized = normalized.slice(0, -1).trim();
+    }
+
+    const val = parseFloat(normalized);
+    const budgetValue = Number.isFinite(val) ? val * multiplier : NaN;
+
+    if (Number.isNaN(budgetValue) || budgetValue < 0) {
+      console.error("Invalid budget input:", input);
+      return;
+    }
+
+    try {
+      await onSave(budgetValue);
+      onClose();
+    } catch (err) {
+      console.warn("Budget save failed, keeping modal open:", err);
+    }
   };
 
   return (
@@ -513,7 +537,8 @@ function AddExpenseModal({
 export default function IETScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-const { token, user } = useMockAuth();  const [tab, setTab] = useState<Tab>("overview");
+  const { token, userId } = useMockAuth();
+  const [tab, setTab] = useState<Tab>("overview");
   const [expenses, setExpenses] = useState<IETExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -521,60 +546,152 @@ const { token, user } = useMockAuth();  const [tab, setTab] = useState<Tab>("ove
   const [editingExpense, setEditingExpense] = useState<IETExpense | null>(null);
   const [budget, setBudget] = useState(0);
   const [showBudget, setShowBudget] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : 0;
+  const [localBudgetLoaded, setLocalBudgetLoaded] = useState(false);
+  const topPad = Platform.OS === "web" ? 67 : Math.max(insets.top, 16);
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, 16);
 
+  const BUDGET_STORAGE_KEY = "qontri_iet_budget_v1";
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
 
   const authHeader = useCallback(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const loadExpenses = useCallback(async () => {
-    if (!token) return;
+ const loadExpenses = useCallback(async () => {
+    console.log("[IET DEBUG] loadExpenses triggered. Token exists:", !!token);
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/iet`, { headers: authHeader() });
-      if (res.ok) setExpenses(await res.json() as IETExpense[]);
-    } catch {} finally { setLoading(false); }
+      if (!token) {
+        console.log("[IET DEBUG] No token found, stopping spinner.");
+        return;
+      }
+
+      const url = `${API_BASE}/iet`;
+      console.log("[IET DEBUG] Attempting fetch to:", url);
+
+      const headers = authHeader();
+      console.log("[IET DEBUG] Headers generated successfully.");
+
+      const res = await fetch(url, { headers });
+      console.log("[IET DEBUG] Server responded with status:", res.status);
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("[IET DEBUG] Data received, count:", data.length);
+        setExpenses(data);
+      } else {
+        console.error("[IET DEBUG] Server returned error status:", res.status);
+      }
+    } catch (err) {
+      console.error("[IET DEBUG] FATAL CRASH during fetch:", err);
+    } finally {
+      console.log("[IET DEBUG] Setting loading to false (Spinner should stop).");
+      setLoading(false);
+    }
   }, [token, authHeader]);
 
 useEffect(() => {
-    if (!token || !user?.id) return;
-    
-    // Ask the server for the user's saved budget
-    fetch(`${API_BASE}/auth/me`, { 
-      headers: { Authorization: `Bearer ${token}` } 
+    loadExpenses();
+  }, [loadExpenses]);
+
+useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(BUDGET_STORAGE_KEY);
+        if (stored) {
+          const parsed = parseFloat(stored.replace(/,/g, ""));
+          if (!Number.isNaN(parsed) && parsed >= 0) {
+            setBudget(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load local IET budget:", err);
+      } finally {
+        setLocalBudgetLoaded(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!token || !userId || !localBudgetLoaded) return;
+
+    fetch(`${API_BASE}/iet/budget`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        // If Neon has a budget saved, we fill it in here
-        if (data?.user?.monthlyBudget) {
-          setBudget(parseFloat(data.user.monthlyBudget));
+      .then(async (data) => {
+        const budgetValue = typeof data?.budget === "number"
+          ? data.budget
+          : typeof data?.budget === "string"
+            ? parseFloat(data.budget.replace(/,/g, ""))
+            : NaN;
+
+        if (!Number.isNaN(budgetValue) && budgetValue >= 0) {
+          if (budget === 0) {
+            setBudget(budgetValue);
+            await AsyncStorage.setItem(BUDGET_STORAGE_KEY, String(budgetValue));
+          }
         }
       })
-      .catch((err) => console.error("Failed to load budget from Neon:", err));
-  }, [token, user?.id]);
+      .catch((err) => console.error("Failed to load IET budget:", err));
+  }, [token, userId, localBudgetLoaded, budget]);
 
- const saveBudget = (val: number) => {
-    setBudget(val); // Update UI instantly so it feels fast
-    
-    if (token && user?.id) {
-      // Send the new amount to your new Railway mailbox
-      fetch(`${API_BASE}/auth/update-budget`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${token}` 
+ const saveBudget = async (val: number) => {
+    const budgetValue = Number(val);
+    if (!Number.isFinite(budgetValue) || budgetValue < 0) {
+      console.error("Invalid budget value, skipping save:", val);
+      return;
+    }
+
+    setBudget(budgetValue);
+    try {
+      await AsyncStorage.setItem(BUDGET_STORAGE_KEY, String(budgetValue));
+    } catch (err) {
+      console.warn("Failed to store local IET budget, but keeping updated state:", err);
+    }
+
+    if (!token || !userId) {
+      console.warn("Unable to save budget: missing auth token or userId, using local cache only");
+      return;
+    }
+
+    const body = { budget: budgetValue };
+    console.log("Saving budget", body);
+
+    try {
+      const res = await fetch(`${API_BASE}/iet/budget`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          userId: user.id, 
-          amount: val 
-        }),
-      })
-      .then(res => {
-        if(res.ok) console.log("Budget permanently synced to Neon");
-      })
-      .catch((err) => console.error("Cloud sync failed:", err));
+        body: JSON.stringify(body),
+      });
+      const text = await res.text().catch(() => "");
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+
+      if (!res.ok) {
+        console.warn("Budget save returned server error", res.status, data);
+        return;
+      }
+
+      const responseBudget = typeof data?.budget === "number"
+        ? data.budget
+        : typeof data?.budget === "string"
+          ? parseFloat(data.budget.replace(/,/g, ""))
+          : NaN;
+
+      if (!Number.isNaN(responseBudget) && responseBudget >= 0) {
+        setBudget(responseBudget);
+      }
+      console.log("Budget permanently synced.");
+    } catch (err) {
+      console.warn("Cloud sync failed:", err);
     }
   };
   const handleAddExpense = useCallback(async (entry: Omit<IETExpense, "id" | "createdAt">) => {
@@ -697,7 +814,7 @@ useEffect(() => {
     <>
       <ScrollView
         style={[s.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ paddingBottom: bottomPad + 40 }}
+        contentContainerStyle={{ paddingBottom: bottomPad + 40, paddingTop: 0 }}
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient

@@ -1,67 +1,71 @@
 import { useEffect, useState, useRef } from 'react';
-import { Animated, StyleSheet, View, StatusBar, Dimensions } from 'react-native';
-import { Stack } from 'expo-router';
+import { Animated, StyleSheet, View, StatusBar } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// --- CHECK THESE IMPORTS ---
+// If these show red, it means the name inside { } might be different in your files
+import { MockAuthProvider, useMockAuth } from "../context/MockAuthContext";
+import { AppProvider } from "../context/AppContext";
+import { ThemeProvider } from "../context/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const [appIsReady, setAppIsReady] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+function InitialLayout() {
+  const { isSignedIn, onboardingDone, loaded } = useMockAuth();
+  const segments = useSegments();
+  const router = useRouter();
   
-  const logoScale = useRef(new Animated.Value(0.8)).current; 
-  const logoOpacity = useRef(new Animated.Value(0)).current; 
-  const containerOpacity = useRef(new Animated.Value(1)).current; 
+  const [showSplash, setShowSplash] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    async function prepare() {
-      try {
-        // Reduced to 1.5s to speed up the fix
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setAppIsReady(true);
-      }
+    if (loaded) {
+      SplashScreen.hideAsync().catch(() => {});
+      
+      // Keep the logo on screen for 2 seconds then fade it
+      const timer = setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }).start(() => setShowSplash(false));
+      }, 2000);
+
+      return () => clearTimeout(timer);
     }
-    prepare();
-  }, []);
+  }, [loaded]);
 
   useEffect(() => {
-    if (appIsReady) {
-      SplashScreen.hideAsync();
+    if (!loaded || showSplash) return;
 
-      Animated.parallel([
-        Animated.spring(logoScale, { toValue: 1, friction: 4, useNativeDriver: true }),
-        Animated.timing(logoOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      ]).start(() => {
-        setTimeout(() => {
-          Animated.timing(containerOpacity, {
-            toValue: 0,
-            duration: 600, 
-            useNativeDriver: true,
-          }).start(() => setShowSplash(false));
-        }, 1000);
-      });
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (!isSignedIn && !inAuthGroup) {
+      router.replace("/(auth)/sign-in");
+    } else if (isSignedIn && inAuthGroup) {
+      router.replace((onboardingDone ? "/(tabs)" : "/(onboarding)") as any);
     }
-  }, [appIsReady]);
+  }, [isSignedIn, loaded, segments, showSplash, onboardingDone]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0A1628' }}>
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" />
       
-      {/* The App Stack: ALWAYS RENDERED so navigation works */}
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
+      {loaded && (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(onboarding)" />
+        </Stack>
+      )}
 
-      {/* The Splash Overlay: Sits on top and disappears */}
       {showSplash && (
-        <Animated.View style={[styles.container, { opacity: containerOpacity }]} pointerEvents="none">
+        <Animated.View style={[styles.splashOverlay, { opacity: fadeAnim }]} pointerEvents="none">
           <Animated.Image
             source={require('../assets/images/icon.png')}
-            style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+            style={styles.logo}
           />
         </Animated.View>
       )}
@@ -69,13 +73,31 @@ export default function RootLayout() {
   );
 }
 
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <MockAuthProvider>
+        <ThemeProvider>
+          <AppProvider>
+            <InitialLayout />
+          </AppProvider>
+        </ThemeProvider>
+      </MockAuthProvider>
+    </SafeAreaProvider>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
+  root: {
+    flex: 1,
+    backgroundColor: '#0A1628',
+  },
+  splashOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A1628', 
+    backgroundColor: '#0A1628',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999, // Ensure it is on the very top
+    zIndex: 9999,
   },
   logo: {
     width: 320,

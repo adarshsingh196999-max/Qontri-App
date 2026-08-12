@@ -19,6 +19,15 @@ router.post("/auth/send-otp", async (req, res) => {
   if (!email) return res.status(400).json({ error: "Email is required" });
 
   const normalizedEmail = email.toLowerCase().trim();
+
+    // Support a test-login bypass before touching the DB when explicitly enabled.
+    const _enableTest = String(process.env["ENABLE_TEST_LOGIN"] ?? "").toLowerCase();
+    const enableTestLogin = _enableTest === "true" || _enableTest === "1" || _enableTest === "yes";
+    if (enableTestLogin && normalizedEmail === "testuser@qontri.in" && code === "999999") {
+      // create and return a session token for the tester without DB verification
+      const token = await createSession(normalizedEmail);
+      return res.json({ success: true, token });
+    }
   const code = generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60000); // 10 mins
 
@@ -48,6 +57,16 @@ router.post("/auth/send-otp", async (req, res) => {
 router.post("/auth/verify-otp", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) return res.status(400).json({ error: "Email and code required" });
+
+  // Temporary debug logging to inspect incoming verify-otp requests.
+  // Remove or guard this in production.
+  try {
+    console.log("[DEBUG verify-otp] incoming body:", req.body);
+    console.log("[DEBUG verify-otp] remote ip:", req.ip || req.headers["x-forwarded-for"] || "unknown");
+    console.log("[DEBUG verify-otp] ENABLE_TEST_LOGIN=", process.env["ENABLE_TEST_LOGIN"]);
+  } catch (e) {
+    // ignore logging errors
+  }
 
   const normalizedEmail = email.toLowerCase().trim();
 
