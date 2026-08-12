@@ -77,9 +77,7 @@ router.post("/verify-otp", async (req, res) => {
   } catch (e) {
     // ignore logging errors
   }
-
-  const normalizedEmail = email.toLowerCase().trim();
-
+  
   try {
     const [entry] = await db.select()
       .from(otpsTable)
