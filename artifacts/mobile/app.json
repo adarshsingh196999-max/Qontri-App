@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Qontri",
     "slug": "mobile",
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
@@ -14,13 +14,18 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#1E3A5F"
+      "backgroundColor": "#0A1628"
     },
     "ios": {
       "supportsTablet": false
     },
     "android": {
-      "package": "com.qontri.app"
+      "package": "com.qontri.app",
+      "versionCode": 5,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon-symbol.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"

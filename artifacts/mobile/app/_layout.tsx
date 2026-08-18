@@ -19,6 +19,7 @@ function InitialLayout() {
   
   const [showSplash, setShowSplash] = useState(true);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const logoScale = useRef(new Animated.Value(1.0)).current;
 
   useEffect(() => {
     if (loaded) {
@@ -26,11 +27,18 @@ function InitialLayout() {
       
       // Keep the logo on screen for 2 seconds then fade it
       const timer = setTimeout(() => {
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }).start(() => setShowSplash(false));
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(logoScale, {
+            toValue: 1.02,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ]).start(() => setShowSplash(false));
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -38,7 +46,7 @@ function InitialLayout() {
   }, [loaded]);
 
   useEffect(() => {
-    if (!loaded || showSplash) return;
+    if (!loaded) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
@@ -47,7 +55,7 @@ function InitialLayout() {
     } else if (isSignedIn && inAuthGroup) {
       router.replace((onboardingDone ? "/(tabs)" : "/(onboarding)") as any);
     }
-  }, [isSignedIn, loaded, segments, showSplash, onboardingDone]);
+  }, [isSignedIn, loaded, segments, onboardingDone]);
 
   return (
     <View style={styles.root}>
@@ -55,17 +63,17 @@ function InitialLayout() {
       
       {loaded && (
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(onboarding)" />
+          {!isSignedIn && <Stack.Screen name="(auth)" />}
+          {isSignedIn && <Stack.Screen name="(tabs)" />}
+          {isSignedIn && <Stack.Screen name="(onboarding)" />}
         </Stack>
       )}
 
       {showSplash && (
         <Animated.View style={[styles.splashOverlay, { opacity: fadeAnim }]} pointerEvents="none">
           <Animated.Image
-            source={require('../assets/images/icon.png')}
-            style={styles.logo}
+            source={require('../assets/images/icon-symbol.png')}
+            style={[styles.logo, { transform: [{ scale: logoScale }] }]}
           />
         </Animated.View>
       )}
