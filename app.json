@@ -22,10 +22,10 @@
     },
     "android": {
       "package": "com.qontri.app",
-      "versionCode": 3,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon-symbol.png",
-        "backgroundColor": "#0A1628"
+        "backgroundColor": "#FFFFFF"
       }
     },
     "updates": {
