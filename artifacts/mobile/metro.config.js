@@ -27,3 +27,11 @@ if (Array.isArray(originalBlockList)) {
 }
 
 module.exports = config;
+// Ensure package exports resolution is disabled for metro in monorepos
+// to avoid conflicts with custom router roots.
+config.resolver = {
+  ...config.resolver,
+  unstable_enablePackageExports: false,
+};
+
+module.exports = config;

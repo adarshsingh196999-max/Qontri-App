@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Resend } from "resend";
-import { db, usersTable, otpsTable } from "@workspace/db";
+import { db, userProfilesTable, usersTable, otpsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createSession } from "../middlewares/requireAuth";
 
@@ -13,6 +13,37 @@ function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+/**
+ * Ensure the user exists before issuing a session. The user insert is safe for
+ * concurrent first logins; profile creation is intentionally non-blocking.
+ */
+async function ensureUserSetup(email: string): Promise<void> {
+  const [existingUser] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+
+  if (!existingUser) {
+    console.log("[AUTH] New user detected:", email);
+  }
+
+  await db
+    .insert(usersTable)
+    .values({ email })
+    .onConflictDoNothing({ target: usersTable.email });
+
+  try {
+    await db
+      .insert(userProfilesTable)
+      .values({ email })
+      .onConflictDoNothing({ target: userProfilesTable.email });
+  } catch (err) {
+    console.error("[AUTH] Database error during user setup:", err);
+    // A profile is created lazily and must not prevent OTP delivery.
+  }
+}
+
 // 1. SEND OTP
 router.post("/auth/send-otp", async (req, res) => {
   const { email } = req.body;
@@ -23,6 +54,8 @@ router.post("/auth/send-otp", async (req, res) => {
   const expiresAt = new Date(Date.now() + 10 * 60000); 
 
   try {
+    await ensureUserSetup(normalizedEmail);
+
     await db.insert(otpsTable)
       .values({ email: normalizedEmail, code, expiresAt })
       .onConflictDoUpdate({
@@ -37,10 +70,10 @@ router.post("/auth/send-otp", async (req, res) => {
       html: `Your code is <strong>${code}</strong>. It expires in 10 minutes.`,
     });
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
-    console.error("OTP Send Error:", err);
-    res.status(500).json({ error: "Failed to send OTP" });
+    console.error("[AUTH] Database error during user setup:", err);
+    return res.status(500).json({ error: "Failed to send OTP" });
   }
 });
 
@@ -51,13 +84,15 @@ router.post("/auth/verify-otp", async (req, res) => {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // --- REVIEWER BYPASS ---
-  if (normalizedEmail === "testuser@qontri.in" && code === "999999") {
-    const token = await createSession("testuser@qontri.in");
-    return res.json({ success: true, token });
-  }
-
   try {
+    // --- REVIEWER BYPASS ---
+    if (normalizedEmail === "testuser@qontri.in" && code === "999999") {
+      const token = await createSession("testuser@qontri.in");
+      return res.json({ success: true, token });
+    }
+
+    await ensureUserSetup(normalizedEmail);
+
     const [entry] = await db.select()
       .from(otpsTable)
       .where(eq(otpsTable.email, normalizedEmail));
@@ -73,11 +108,11 @@ router.post("/auth/verify-otp", async (req, res) => {
     await db.delete(otpsTable).where(eq(otpsTable.email, normalizedEmail));
 
     const token = await createSession(normalizedEmail);
-    res.json({ success: true, token });
+    return res.json({ success: true, token });
 
   } catch (err) {
-    console.error("OTP Verify Error:", err);
-    res.status(500).json({ error: "Verification failed" });
+    console.error("[AUTH] Database error during user setup:", err);
+    return res.status(500).json({ error: "Verification failed" });
   }
 });
 
