@@ -56,20 +56,35 @@ export function MockAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, authToken: string, needsOnboarding: boolean) => {
-    const uid = `user_${email.replace(/[^a-z0-9]/gi, "_")}`;
+    const normalizedEmail = (email ?? "").trim().toLowerCase();
+    const safeToken = (authToken ?? "").trim();
+
+    if (!normalizedEmail || !safeToken) {
+      throw new Error("Missing auth data.");
+    }
+
+    const uid = `user_${normalizedEmail.replace(/[^a-z0-9]/gi, "_")}`;
     const onboarded = !needsOnboarding;
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ email, userId: uid, token: authToken, onboardingDone: onboarded }));
-    setUserEmail(email);
+
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ email: normalizedEmail, userId: uid, token: safeToken, onboardingDone: onboarded })
+    );
+
+    setUserEmail(normalizedEmail);
     setUserId(uid);
-    setToken(authToken);
+    setToken(safeToken);
     setIsSignedIn(true);
     setOnboardingDoneState(onboarded);
   }, []);
 
   const signOut = useCallback(async () => {
     await AsyncStorage.removeItem(STORAGE_KEY);
+    setUserEmail("");
+    setUserId("");
     setIsSignedIn(false);
     setToken("");
+    setOnboardingDoneState(true);
   }, []);
 
   const completeOnboarding = useCallback(async () => {

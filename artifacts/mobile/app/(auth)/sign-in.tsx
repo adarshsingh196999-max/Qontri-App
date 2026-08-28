@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
+import * as Sentry from '@sentry/react-native';
 import {
   ActivityIndicator,
+  Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -38,7 +40,8 @@ export default function SignInPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      const url = `${API_BASE}/auth/send-otp`;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),
@@ -51,7 +54,10 @@ export default function SignInPage() {
       setOtp(["", "", "", "", "", ""]);
       setStep("otp");
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
-    } catch {
+    } catch (error: any) {
+      Sentry.captureException(error);
+      const url = `${API_BASE}/auth/send-otp`;
+      Alert.alert('Network Debug', 'Failed to reach: ' + url + '\nError: ' + error.message);
       setLocalError("Network error. Check connection.");
     } finally {
       setLoading(false);
@@ -68,7 +74,8 @@ export default function SignInPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+      const url = `${API_BASE}/auth/verify-otp`;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: entered }),
@@ -80,7 +87,12 @@ export default function SignInPage() {
         return;
       }
 
-      const tok = data.token ?? "";
+      const tok = typeof data?.token === "string" ? data.token.trim() : "";
+      if (!tok) {
+        setLocalError("Verification failed. Please request a new code.");
+        return;
+      }
+
       let needsOnboarding = true;
 
       try {
@@ -94,11 +106,14 @@ export default function SignInPage() {
       } catch (err) { console.error(err); }
 
       // 3. LOG THE USER IN
-      // This updates the global state. The "Police" layout will see this and move you.
+      // This updates the global state. The app layout will see this and move you.
       const normalizedEmail = email.trim().toLowerCase();
       await signIn(normalizedEmail, tok, needsOnboarding);
 
-    } catch (error) {
+    } catch (error: any) {
+      Sentry.captureException(error);
+      const url = `${API_BASE}/auth/verify-otp`;
+      Alert.alert('Network Debug', 'Failed to reach: ' + url + '\nError: ' + error.message);
       setLocalError("Error verifying code.");
     } finally {
       setLoading(false);

@@ -1,15 +1,21 @@
-process.env.EXPO_ROUTER_APP_ROOT = "./app";
-process.env.EXPO_ROUTER_IMPORT_MODE = "lazy";
+const path = require("path");
 
 module.exports = function (api) {
-  api.cache(true);
+  const platform = process.env.EXPO_OS ?? process.env.EXPO_PLATFORM;
+  const isWeb = platform === "web";
 
-  // Hardcode router root for EAS/CI environments to avoid relying on
-  // process.env at build time which can cause SyntaxError during bundling.
-  process.env.EXPO_ROUTER_APP_ROOT = './app';
+  api.cache.using(() => platform ?? "native");
+
+  process.env.EXPO_ROUTER_APP_ROOT = path.resolve(__dirname, "app");
+  process.env.EXPO_ROUTER_IMPORT_MODE = isWeb ? "lazy" : "eager";
 
   return {
     presets: [["babel-preset-expo", { unstable_transformImportMeta: true }]],
-    plugins: [["transform-inline-environment-variables", { include: ["EXPO_ROUTER_APP_ROOT", "EXPO_ROUTER_IMPORT_MODE"] }]],
+    plugins: [
+      [
+        "transform-inline-environment-variables",
+        { include: ["EXPO_ROUTER_APP_ROOT", "EXPO_ROUTER_IMPORT_MODE"] },
+      ],
+    ],
   };
 };

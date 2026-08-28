@@ -17,7 +17,8 @@
       "backgroundColor": "#0A1628"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.qontri.app"
     },
     "android": {
       "package": "com.qontri.app",
@@ -36,6 +37,7 @@
       "expo-router",
       "expo-font",
       "expo-web-browser",
+      "@sentry/react-native/expo",
       [
         "expo-build-properties",
         {
@@ -47,13 +49,18 @@
             }
           }
         }
-      ]
+      ],
+      "sentry-expo",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
     },
     "extra": {
+      "router": {
+        "root": "app"
+      },
       "eas": {
         "projectId": "3ef85cd4-0471-4761-888a-f329de9e8e4f"
       }

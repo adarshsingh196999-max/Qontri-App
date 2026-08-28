@@ -1,3 +1,9 @@
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  debug: false, // Set to true only if you want to see Sentry's internal logs
+});
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View, StatusBar } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -9,8 +15,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MockAuthProvider, useMockAuth } from "../context/MockAuthContext";
 import { AppProvider } from "../context/AppContext";
 import { ThemeProvider } from "../context/ThemeContext";
+import { initializeSentry } from "../lib/sentry";
 
 SplashScreen.preventAutoHideAsync();
+initializeSentry();
 
 function InitialLayout() {
   const { isSignedIn, onboardingDone, loaded } = useMockAuth();
@@ -81,7 +89,8 @@ function InitialLayout() {
   );
 }
 
-export default function RootLayout() {
+// 1. Define the RootLayout function first
+function RootLayout() {
   return (
     <SafeAreaProvider>
       <MockAuthProvider>
@@ -94,6 +103,10 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+// 2. Wrap it with Sentry at the very end
+export default Sentry.wrap(RootLayout);
+
 
 const styles = StyleSheet.create({
   root: {
