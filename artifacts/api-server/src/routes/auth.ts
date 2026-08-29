@@ -6,7 +6,7 @@ import { createSession } from "../middlewares/requireAuth";
 
 const router = Router();
 router.get("/health", (req, res) => {
-  return res.json({ status: "ok", message: "Qontri API is live" });
+  return res.json({ status: "ok", message: "Qontri API is online" });
 });
 const resend = new Resend(process.env["RESEND_API_KEY"]);
 
