@@ -48,7 +48,7 @@ async function ensureUserSetup(email: string): Promise<void> {
 }
 
 // 1. SEND OTP
-router.post("/auth/send-otp", async (req, res) => {
+router.post("/send-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email is required" });
 
@@ -81,7 +81,7 @@ router.post("/auth/send-otp", async (req, res) => {
 });
 
 // 2. VERIFY OTP (With Reviewer Bypass)
-router.post("/auth/verify-otp", async (req, res) => {
+router.post("/verify-otp", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
 

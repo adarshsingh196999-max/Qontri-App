@@ -12,7 +12,7 @@ import pingRouter from "./ping";
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use(authRouter);
+router.use('/auth', authRouter);
 router.use(tripsRouter);
 router.use(adminRouter);
 router.use(groupsRouter);
