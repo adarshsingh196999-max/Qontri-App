@@ -1,9 +1,35 @@
 import * as Sentry from '@sentry/react-native';
+import crashlytics from '@react-native-firebase/crashlytics';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   debug: false, // Set to true only if you want to see Sentry's internal logs
 });
+
+// Initialize Crashlytics collection and wire global JS error handlers
+try {
+  crashlytics().setCrashlyticsCollectionEnabled(true);
+  const globalAny: any = global;
+  const defaultHandler = (globalAny.ErrorUtils && globalAny.ErrorUtils.getGlobalHandler && globalAny.ErrorUtils.getGlobalHandler()) || null;
+  if (globalAny.ErrorUtils && globalAny.ErrorUtils.setGlobalHandler) {
+    globalAny.ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+      try { crashlytics().recordError ? crashlytics().recordError(error) : crashlytics().log(error?.toString?.() ?? 'JS Error'); } catch (e) {}
+      if (defaultHandler) defaultHandler(error, isFatal);
+    });
+  }
+  if (globalAny.addEventListener) {
+    globalAny.addEventListener('unhandledrejection', (ev: any) => {
+      try { crashlytics().recordError ? crashlytics().recordError(ev?.reason) : crashlytics().log('UnhandledRejection'); } catch (e) {}
+    });
+  } else {
+    (globalAny as any).onunhandledrejection = (ev: any) => {
+      try { crashlytics().recordError ? crashlytics().recordError(ev?.reason) : crashlytics().log('UnhandledRejection'); } catch (e) {}
+    };
+  }
+} catch (err) {
+  // If packages are not installed yet, don't block app startup
+  // console.warn('Crashlytics init skipped:', err);
+}
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View, StatusBar } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';

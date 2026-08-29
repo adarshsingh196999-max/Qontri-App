@@ -41,6 +41,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const url = `${API_BASE}/auth/send-otp`;
+      Alert.alert('Debug URL', 'Sending request to: ' + API_BASE + '/auth/send-otp');
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
