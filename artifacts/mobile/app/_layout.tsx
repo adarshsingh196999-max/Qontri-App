@@ -1,5 +1,14 @@
 import * as Sentry from '@sentry/react-native';
-import crashlytics from '@react-native-firebase/crashlytics';
+// Load Crashlytics dynamically to avoid static type/default-export mismatch when
+// packages aren't installed in all environments.
+let crashlytics: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require('@react-native-firebase/crashlytics');
+  crashlytics = mod && (mod.default ?? mod);
+} catch (e) {
+  crashlytics = null;
+}
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,

@@ -16,6 +16,30 @@ import {
 import { useMockAuth } from "@/context/MockAuthContext";
 import { API_BASE } from "@/constants/api";
 
+// Helper: fetch with timeout using AbortController
+async function fetchWithTimeout(input: RequestInfo, init: RequestInit = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+// quick external probe to check if device has general connectivity
+async function externalConnectivityProbe() {
+  try {
+    const probe = await fetchWithTimeout("https://www.google.com/generate_204", {}, 5000);
+    return probe && probe.status === 204;
+  } catch (e) {
+    return false;
+  }
+}
+
 const PRIMARY = "#1E3A5F";
 const ERROR = "#EF4444";
 type Step = "email" | "otp";
@@ -41,15 +65,69 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const url = `${API_BASE}/auth/send-otp`;
-      Alert.alert('Debug URL', 'Sending request to: ' + API_BASE + '/auth/send-otp');
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
-      });
-      const data = await res.json() as { success?: boolean; error?: string };
-      if (!res.ok || !data.success) {
-        setLocalError(data.error ?? "Failed to send code.");
+      Alert.alert('Debug URL', 'Sending request to: ' + url);
+
+      // 0. quick local connectivity probe
+      const hasExternal = await externalConnectivityProbe();
+      if (!hasExternal) {
+        const msg = 'No general internet connectivity detected (external probe failed).';
+        Sentry.captureMessage(msg);
+        Alert.alert('Network Debug', msg);
+        setLocalError('Network error. Check connection.');
+        return;
+      }
+
+      // 1. try health endpoint first to get quick server-level visibility
+      try {
+        const health = await fetchWithTimeout(`${API_BASE}/auth/health`, {}, 4000);
+        if (!health.ok) {
+          const text = await health.text().catch(() => 'no-body');
+          Sentry.captureMessage(`Health check failed: ${health.status} ${text}`);
+          Alert.alert('Network Debug', `Server health check returned ${health.status}`);
+        }
+      } catch (e: any) {
+        // health check failed; continue to main request but record
+        Sentry.captureException(e, { level: 'warning' });
+      }
+
+      // 2. primary request with timeout and one retry for transient failures
+      let attempt = 0;
+      let lastErr: any = null;
+      let data: any = null;
+      while (attempt < 2) {
+        attempt += 1;
+        try {
+          const res = await fetchWithTimeout(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmed }),
+          }, 10000);
+
+          try { data = await res.json(); } catch (e) { data = null; }
+
+          if (!res.ok) {
+            const errText = data?.error ?? `status ${res.status}`;
+            setLocalError(errText ?? "Failed to send code.");
+            Sentry.captureMessage(`Send-OTP failed (attempt ${attempt}): ${errText}`);
+            return;
+          }
+          if (!data || !data.success) {
+            setLocalError(data?.error ?? "Failed to send code.");
+            return;
+          }
+          // success -> break retry loop
+          break;
+        } catch (error: any) {
+          lastErr = error;
+          Sentry.captureException(error);
+          // wait briefly before retrying on transient network errors
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 700));
+        }
+      }
+      if (lastErr) {
+        const errMsg = lastErr?.message ?? String(lastErr);
+        Alert.alert('Network Debug', `Failed to reach: ${url}\nError: ${errMsg}`);
+        setLocalError('Network error. Check connection.');
         return;
       }
       setOtp(["", "", "", "", "", ""]);
@@ -58,7 +136,7 @@ export default function SignInPage() {
     } catch (error: any) {
       Sentry.captureException(error);
       const url = `${API_BASE}/auth/send-otp`;
-      Alert.alert('Network Debug', 'Failed to reach: ' + url + '\nError: ' + error.message);
+      Alert.alert('Network Debug', 'Failed to reach: ' + url + '\nError: ' + (error?.message ?? String(error)));
       setLocalError("Network error. Check connection.");
     } finally {
       setLoading(false);
