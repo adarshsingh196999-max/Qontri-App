@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "720730707427",
+    "project_id": "qontri",
+    "storage_bucket": "qontri.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:720730707427:android:f4be9f321bd0d4877bfcd6",
+        "android_client_info": {
+          "package_name": "com.qontri.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSd_NnJLH5yubIZuBi7SvaaoiHruMWh94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
