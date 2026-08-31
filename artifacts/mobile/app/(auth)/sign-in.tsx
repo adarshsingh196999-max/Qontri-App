@@ -156,7 +156,10 @@ export default function SignInPage() {
       const url = `${API_BASE}/auth/verify-otp`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: entered }),
       });
 
@@ -176,7 +179,10 @@ export default function SignInPage() {
 
       try {
         const profileRes = await fetch(`${API_BASE}/me`, {
-          headers: { Authorization: `Bearer ${tok}` },
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${tok}`,
+          },
         });
         if (profileRes.ok) {
           const profile = await profileRes.json();
@@ -185,15 +191,13 @@ export default function SignInPage() {
       } catch (err) { console.error(err); }
 
       // 3. LOG THE USER IN
-      // This updates the global state. The app layout will see this and move you.
       const normalizedEmail = email.trim().toLowerCase();
       await signIn(normalizedEmail, tok, needsOnboarding);
 
     } catch (error: any) {
       Sentry.captureException(error);
-      const url = `${API_BASE}/auth/verify-otp`;
-      Alert.alert('Network Debug', 'Failed to reach: ' + url + '\nError: ' + error.message);
-      setLocalError("Error verifying code.");
+      console.error("OTP verification network error:", error);
+      setLocalError(error?.message ? `Network error: ${error.message}` : "Error verifying code.");
     } finally {
       setLoading(false);
     }

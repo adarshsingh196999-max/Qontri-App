@@ -34,6 +34,7 @@ export default function OnboardingStep2() {
         const res = await fetch(`${API_BASE}/me`, {
           method: "PUT",
           headers: {
+            "Accept": "application/json",
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
