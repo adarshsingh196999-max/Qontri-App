@@ -1,52 +1,10 @@
-import * as Sentry from '@sentry/react-native';
-// Load Crashlytics dynamically to avoid static type/default-export mismatch when
-// packages aren't installed in all environments.
-let crashlytics: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('@react-native-firebase/crashlytics');
-  crashlytics = mod && (mod.default ?? mod);
-} catch (e) {
-  crashlytics = null;
-}
-
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  debug: false, // Set to true only if you want to see Sentry's internal logs
-});
-
-// Initialize Crashlytics collection and wire global JS error handlers
-try {
-  crashlytics().setCrashlyticsCollectionEnabled(true);
-  const globalAny: any = global;
-  const defaultHandler = (globalAny.ErrorUtils && globalAny.ErrorUtils.getGlobalHandler && globalAny.ErrorUtils.getGlobalHandler()) || null;
-  if (globalAny.ErrorUtils && globalAny.ErrorUtils.setGlobalHandler) {
-    globalAny.ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-      try { crashlytics().recordError ? crashlytics().recordError(error) : crashlytics().log(error?.toString?.() ?? 'JS Error'); } catch (e) {}
-      if (defaultHandler) defaultHandler(error, isFatal);
-    });
-  }
-  if (globalAny.addEventListener) {
-    globalAny.addEventListener('unhandledrejection', (ev: any) => {
-      try { crashlytics().recordError ? crashlytics().recordError(ev?.reason) : crashlytics().log('UnhandledRejection'); } catch (e) {}
-    });
-  } else {
-    (globalAny as any).onunhandledrejection = (ev: any) => {
-      try { crashlytics().recordError ? crashlytics().recordError(ev?.reason) : crashlytics().log('UnhandledRejection'); } catch (e) {}
-    };
-  }
-} catch (err) {
-  // If packages are not installed yet, don't block app startup
-  // console.warn('Crashlytics init skipped:', err);
-}
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View, StatusBar } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Sentry from '@sentry/react-native';
 
-// --- CHECK THESE IMPORTS ---
-// If these show red, it means the name inside { } might be different in your files
 import { MockAuthProvider, useMockAuth } from "../context/MockAuthContext";
 import { AppProvider } from "../context/AppContext";
 import { ThemeProvider } from "../context/ThemeContext";
@@ -54,6 +12,39 @@ import { initializeSentry } from "../lib/sentry";
 
 SplashScreen.preventAutoHideAsync();
 initializeSentry();
+
+function getCrashlytics() {
+  try {
+    // @ts-ignore
+    const mod = require('@react-native-firebase/crashlytics');
+    return mod.default ? mod.default() : mod();
+  } catch (e) {
+    return null;
+  }
+}
+
+function initCrashlyticsSafely() {
+  try {
+    const instance = getCrashlytics();
+    if (!instance) return;
+    instance.setCrashlyticsCollectionEnabled(true);
+    const globalAny: any = global;
+    const defaultHandler = (globalAny.ErrorUtils && globalAny.ErrorUtils.getGlobalHandler && globalAny.ErrorUtils.getGlobalHandler()) || null;
+    if (globalAny.ErrorUtils && globalAny.ErrorUtils.setGlobalHandler) {
+      globalAny.ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+        try { instance.recordError ? instance.recordError(error) : instance.log(error?.toString?.() ?? 'JS Error'); } catch (e) {}
+        if (defaultHandler) defaultHandler(error, isFatal);
+      });
+    }
+    if (globalAny.addEventListener) {
+      globalAny.addEventListener('unhandledrejection', (ev: any) => {
+        try { instance.recordError ? instance.recordError(ev?.reason) : instance.log('UnhandledRejection'); } catch (e) {}
+      });
+    }
+  } catch (err) {
+    console.warn('[Crashlytics] Init skipped:', err);
+  }
+}
 
 function InitialLayout() {
   const { isSignedIn, onboardingDone, loaded } = useMockAuth();
@@ -126,6 +117,10 @@ function InitialLayout() {
 
 // 1. Define the RootLayout function first
 function RootLayout() {
+  useEffect(() => {
+    initCrashlyticsSafely();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <MockAuthProvider>

@@ -75,28 +75,11 @@ export default function ProfileScreen() {
 
   const openExternalUrl = async (url: string) => {
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        Alert.alert("Unable to open link", "This URL is not supported on your device.");
-        return;
-      }
-
-      const response = await fetch(url, { method: "HEAD" });
-      if (!response.ok) {
-        await WebBrowser.openBrowserAsync("https://qontri.in");
-        Alert.alert(
-          "Page unavailable",
-          "That page is not available yet. Opening the Qontri homepage instead."
-        );
-        return;
-      }
-
       await WebBrowser.openBrowserAsync(url);
     } catch (err) {
-      await WebBrowser.openBrowserAsync("https://qontri.in");
       Alert.alert(
         "Unable to open page",
-        "This page is currently unavailable. Opening Qontri homepage instead."
+        "This page is currently unavailable."
       );
     }
   };

@@ -38,6 +38,8 @@
       "expo-font",
       "expo-web-browser",
       "@sentry/react-native/expo",
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       [
         "expo-build-properties",
         {
@@ -49,9 +51,7 @@
             }
           }
         }
-      ],
-      "sentry-expo",
-      "@sentry/react-native"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
