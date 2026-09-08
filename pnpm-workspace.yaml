@@ -37,12 +37,15 @@ minimumReleaseAgeExclude:
 
 onlyBuiltDependencies:
   - '@clerk/shared'
+  - '@firebase/util'
+  - '@sentry/cli'
   - '@swc/core'
   - browser-tabs-lock
   - core-js
   - dtrace-provider
   - esbuild
   - msw
+  - protobufjs
   - unrs-resolver
 
 overrides:
