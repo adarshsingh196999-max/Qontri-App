@@ -11,7 +11,9 @@
   },
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "expo": "~57.0.20",
+    "expo-router": "~57.0.19",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
   }
 }
