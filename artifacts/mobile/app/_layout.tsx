@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View, StatusBar } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -118,7 +119,7 @@ function InitialLayout() {
 // 1. Define the RootLayout function first
 function RootLayout() {
   useEffect(() => {
-    initCrashlyticsSafely();
+    if (Constants.executionEnvironment !== "storeClient") initCrashlyticsSafely();
   }, []);
 
   return (
