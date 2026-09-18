@@ -23,8 +23,14 @@ const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 export async function createSession(email: string): Promise<string> {
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
-  await db.insert(userSessionsTable).values({ id, email, expiresAt });
-  return id;
+  try {
+    await db.insert(userSessionsTable).values({ id, email, expiresAt });
+    return id;
+  } catch (err) {
+    // DB unavailable — fall back to JWT token so login can proceed in degraded mode.
+    console.warn("[AUTH] createSession DB insert failed; returning JWT fallback:", err?.message ?? err);
+    return signToken(email);
+  }
 }
 
 /** Legacy JWT signing — kept only for backward compat; new logins use createSession. */

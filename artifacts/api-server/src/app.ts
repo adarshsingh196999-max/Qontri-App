@@ -36,7 +36,9 @@ app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(clerkMiddleware());
+if (process.env.CLERK_SECRET_KEY || process.env.CLERK_PUBLISHABLE_KEY) {
+  app.use(clerkMiddleware());
+}
 
 app.use("/api", router);
 
