@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.qontri.app",
-      "versionCode": 8,
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon-symbol.png",
@@ -52,6 +52,7 @@
         "expo-build-properties",
         {
           "android": {
+            "usesCleartextTraffic": true,
             "packagingOptions": {
               "pickFirst": [
                 "META-INF/versions/9/OSGI-INF/MANIFEST.MF"

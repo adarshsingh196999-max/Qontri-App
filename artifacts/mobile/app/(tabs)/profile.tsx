@@ -27,6 +27,33 @@ import { useMockAuth } from "@/context/MockAuthContext";
 import { ThemeMode, useTheme } from "@/context/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 
+// Turns a stored identifier into something readable.
+//   "phone_918905475048@qontri.local"  ->  "+91 89054 75048"
+//   "user@example.com"                 ->  "user@example.com"
+function formatIdentifier(raw: string | null | undefined): string {
+  if (!raw) return "";
+
+  // Match "phone_<digits>" anywhere in the string.
+  // Handles "phone_918905475048@qontri.local", "phone_+91...", etc.
+  const m = raw.match(/phone_+(\d+)/);
+  if (m) {
+    let digits = m[1];
+
+    // Drop leading "91" for Indian numbers so we can reformat consistently.
+    if (digits.length === 12 && digits.startsWith("91")) {
+      digits = digits.slice(2);
+    }
+
+    if (digits.length === 10) {
+      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+    }
+
+    return `+${digits}`;
+  }
+
+  return raw;
+}
+
 export default function ProfileScreen() {
   const colors = useColors();
   const { themeMode, setThemeMode } = useTheme();
@@ -103,7 +130,6 @@ export default function ProfileScreen() {
     }
   };
 
-
   return (
     <>
     <ScrollView
@@ -178,9 +204,9 @@ export default function ProfileScreen() {
               <Feather name="edit-2" size={16} color="rgba(255,255,255,0.7)" />
             </Pressable>
           )}
-          {userEmail ? (
+                   {userEmail ? (
             <Text style={[styles.userSubtitle, { color: "rgba(255,255,255,0.75)" }]}>
-              {userEmail}
+                          {formatIdentifier(userEmail)}
             </Text>
           ) : null}
           <Text style={[styles.userSubtitle, { color: "rgba(255,255,255,0.6)" }]}>
