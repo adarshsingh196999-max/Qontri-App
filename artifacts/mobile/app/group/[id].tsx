@@ -220,7 +220,7 @@ export default function GroupDetailScreen() {
 
   const inviteTag = group.tagNumber ?? group.id;
   const inviteLink = `https://qontri.app/join/${inviteTag.replace("#", "")}`;
-  const inviteText = `Hey! Join "${group.emoji} ${group.name}" on Qontri.\nGroup tag: ${inviteTag}\n\nDownload the Qontri app and scan the QR code or enter the tag to join.`;
+  const inviteText = `Hey! Join "${group.emoji} ${group.name}" on Qontri.\nGroup tag: ${inviteTag}\n\nDownload the Qontri app and scan the QR code or enter the tag to join.\nhttps://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN`;
 
   const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -228,7 +228,7 @@ export default function GroupDetailScreen() {
   };
 
   const handleCopyLink = async () => {
-    await Clipboard.setStringAsync(inviteLink);
+        await Clipboard.setStringAsync(inviteText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -348,10 +348,10 @@ export default function GroupDetailScreen() {
         <View style={styles.summaryCard}>
           {/* Destination photo — decorative, must not capture touches */}
           {EMOJI_IMAGES[group.emoji] && (
-            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
               <Image
                 source={{ uri: EMOJI_IMAGES[group.emoji] }}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
                 resizeMode="cover"
               />
             </View>
@@ -365,7 +365,7 @@ export default function GroupDetailScreen() {
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
           {/* Content */}
@@ -1310,7 +1310,7 @@ export default function GroupDetailScreen() {
                 style={({ pressed }) => [styles.shareActionBtn, styles.whatsappBtn, { opacity: pressed ? 0.8 : 1 }]}
                 onPress={() => { setShowShareSheet(false); handleWhatsApp(); }}
               >
-                <Text style={styles.shareActionIcon}>💬</Text>
+                <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
                 <Text style={styles.whatsappBtnText}>WhatsApp</Text>
               </Pressable>
 
