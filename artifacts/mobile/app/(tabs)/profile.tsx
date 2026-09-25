@@ -290,7 +290,7 @@ export default function ProfileScreen() {
 
           {[
             { icon: "info", label: "About Qontri", url: "https://qontri.in/" },
-            { icon: "star", label: "Rate the App", url: null },
+                        { icon: "star", label: "Rate the App", url: "market://details?id=com.qontri.app&showAllReviews=true" },
           ].map((item, idx, arr) => (
             <Pressable
               key={item.label}
@@ -304,7 +304,15 @@ export default function ProfileScreen() {
               ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (item.url) Linking.openURL(item.url);
+                                if (item.url) {
+                  Linking.openURL(item.url).catch(() => {
+                    if (item.url?.startsWith("market://")) {
+                      Linking.openURL(
+                        item.url.replace("market://", "https://play.google.com/store/apps/")
+                      );
+                    }
+                  });
+                }
               }}
             >
               <View style={styles.menuItemLeft}>
