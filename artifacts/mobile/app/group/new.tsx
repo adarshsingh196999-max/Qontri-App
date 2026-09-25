@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
@@ -45,7 +45,7 @@ export default function NewGroupScreen() {
 
   const qrData = createdTag ? JSON.stringify({ q: "qontri", tag: createdTag }) : "";
   const inviteLink = createdTag ? `https://qontri.app/join/${createdTag.replace("#", "")}` : "";
-  const whatsappMessage = `Hey! I've created a group "${createdGroupName}" on Qontri to split expenses. Tag: ${createdTag} — Join using the Qontri app.`;
+  const whatsappMessage = `Hey! I've created a group "${createdGroupName}" on Qontri to split expenses.\nTag: ${createdTag}\n\nDownload Qontri:\nhttps://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN`;
 
   const handleCreate = async () => {
     if (!name.trim() || creating) return;
@@ -241,7 +241,7 @@ export default function NewGroupScreen() {
                 ]}
                 onPress={openWhatsApp}
               >
-                <Text style={styles.whatsappIcon}>💬</Text>
+                <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
                 <Text style={styles.whatsappText}>WhatsApp</Text>
               </Pressable>
 

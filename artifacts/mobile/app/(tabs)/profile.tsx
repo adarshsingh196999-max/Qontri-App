@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Constants from "expo-constants";
 import * as ImagePicker from "expo-image-picker";
 import * as WebBrowser from "expo-web-browser";
 import { LinearGradient } from "expo-linear-gradient";
@@ -134,7 +135,7 @@ export default function ProfileScreen() {
     <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: bottomPad + 40 }}
+            contentContainerStyle={{ paddingBottom: bottomPad + 120 }}
       showsVerticalScrollIndicator={false}
     >
       <LinearGradient
@@ -432,9 +433,12 @@ export default function ProfileScreen() {
         <Text style={styles.deleteAccountText}>Delete Account</Text>
       </Pressable>
 
-      <View style={[styles.versionWrap]}>
+      <View style={styles.versionWrap}>
+        <Text style={[styles.madeInText, { color: colors.mutedForeground }]}>
+          Made in India 🇮🇳
+        </Text>
         <Text style={[styles.versionText, { color: colors.mutedForeground }]}>
-          Qontri v1.0.0
+          Version {Constants.expoConfig?.version ?? "1.0.5"}
         </Text>
       </View>
     </ScrollView>
@@ -663,7 +667,8 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 11,
