@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -20,6 +20,7 @@ import Svg, { Circle, G } from "react-native-svg";
 
 import { CATEGORY_LIST, getCategoryColor, getCategoryIcon } from "@/components/CategoryBadge";
 import { DatePickerField } from "../../components/DatePickerField";
+import WalkthroughOverlay, { WalkthroughStep } from "@/components/WalkthroughOverlay";
 import { useMockAuth } from "@/context/MockAuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -282,7 +283,7 @@ function BudgetStrip({ budget, spent, onEdit }: { budget: number; spent: number;
         onPress={onEdit}
       >
         <Feather name="target" size={14} color="#4A90D9" />
-        <Text style={s.budgetSetLabel}>Set monthly budget →</Text>
+        <Text style={s.budgetSetLabel}>Set monthly expense budget →</Text>
       </Pressable>
     );
   }
@@ -810,6 +811,46 @@ useEffect(() => {
     { key: "heatmap", label: "Heatmap" },
   ];
 
+  const budgetRef = useRef<View>(null);
+  const addExpenseRef = useRef<View>(null);
+  const tabsRowRef = useRef<View>(null);
+  const heatmapTabRef = useRef<View>(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("walkthrough:iet:v1").then((seen) => {
+      if (!seen) setShowWalkthrough(true);
+    });
+  }, []);
+
+  const dismissWalkthrough = () => {
+    setShowWalkthrough(false);
+    AsyncStorage.setItem("walkthrough:iet:v1", "1");
+  };
+
+  const walkthroughSteps: WalkthroughStep[] = [
+    {
+      ref: budgetRef,
+      title: "Set a monthly expense budget",
+      body: "Tap here to set a monthly spend limit — IET keeps you on track and alerts you when you're close.",
+    },
+    {
+      ref: addExpenseRef,
+      title: "Add an expense",
+      body: "Tap + to log what you spent. Every entry updates your totals, averages, and category breakdown instantly.",
+    },
+    {
+      ref: tabsRowRef,
+      title: "Switch between views",
+      body: "Tap Overview for a summary, Trends for monthly charts, and Heatmap for a spending calendar.",
+    },
+    {
+      ref: heatmapTabRef,
+      title: "See your spending calendar",
+      body: "Heatmap shows a calendar view — each day is shaded by how much you spent, so you spot patterns at a glance.",
+    },
+  ];
+
   return (
     <>
       <ScrollView
@@ -827,7 +868,11 @@ useEffect(() => {
               <Text style={s.heroTag}>Individual Expense Tracker</Text>
               <Text style={s.heroTitle}>IET</Text>
             </View>
-            <Pressable style={s.addBtn} onPress={() => { setEditingExpense(null); setShowAdd(true); }}>
+            <Pressable
+              ref={addExpenseRef}
+              style={s.addBtn}
+              onPress={() => { setEditingExpense(null); setShowAdd(true); }}
+            >
               <Feather name="plus" size={18} color="#fff" />
               <Text style={s.addBtnText}>Add Expense</Text>
             </Pressable>
@@ -865,13 +910,20 @@ useEffect(() => {
           </View>
         </LinearGradient>
 
-        <BudgetStrip budget={budget} spent={stats.totalThisMonth} onEdit={() => setShowBudget(true)} />
+        <View ref={budgetRef} collapsable={false}>
+          <BudgetStrip budget={budget} spent={stats.totalThisMonth} onEdit={() => setShowBudget(true)} />
+        </View>
 
-        <View style={[s.tabsWrap, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View
+          ref={tabsRowRef}
+          collapsable={false}
+          style={[s.tabsWrap, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
+        >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs}>
             {tabItems.map((t) => (
               <Pressable
                 key={t.key}
+                ref={t.key === "heatmap" ? heatmapTabRef : undefined}
                 style={[s.tabBtn, tab === t.key && { borderBottomColor: "#4A90D9", borderBottomWidth: 2 }]}
                 onPress={() => setTab(t.key)}
               >
@@ -1009,6 +1061,12 @@ useEffect(() => {
         editing={editingExpense}
       />
       <BudgetModal visible={showBudget} current={budget} onSave={saveBudget} onClose={() => setShowBudget(false)} />
+
+      <WalkthroughOverlay
+        visible={showWalkthrough}
+        steps={walkthroughSteps}
+        onDone={dismissWalkthrough}
+      />
     </>
   );
 }

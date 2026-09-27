@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AmountText } from "@/components/AmountText";
+import WalkthroughOverlay, { WalkthroughStep } from "@/components/WalkthroughOverlay";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -31,7 +33,35 @@ interface QRGroupData {
 export default function GroupsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { groups, getMemberBalance, currentUserId, joinGroup, refreshGroups } = useApp();
+      const { groups, getMemberBalance, currentUserId, joinGroup, refreshGroups, currentUserName } = useApp();
+      
+        const newGroupBtnRef = useRef<View>(null);
+  const scanBtnRef = useRef<View>(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("walkthrough:groups:v1").then((seen) => {
+      if (!seen) setShowWalkthrough(true);
+    });
+  }, []);
+
+  const dismissWalkthrough = () => {
+    setShowWalkthrough(false);
+    AsyncStorage.setItem("walkthrough:groups:v1", "1");
+  };
+
+  const walkthroughSteps: WalkthroughStep[] = [
+    {
+      ref: newGroupBtnRef,
+      title: "Create a group",
+      body: "Tap + to start a group with friends and start using Qontri together.",
+    },
+    {
+      ref: scanBtnRef,
+      title: "Scan to join",
+      body: "Tap to scan a QR code shared by a friend and join their group instantly.",
+    },
+  ];
 
   useFocusEffect(
     useCallback(() => {
@@ -132,18 +162,23 @@ export default function GroupsScreen() {
       >
         <View style={styles.headerTop}>
           <View>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              My Qontri's
-            </Text>
+                          <Text
+                style={[styles.title, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {currentUserName ? `Welcome, ${currentUserName}` : "Welcome"}
+              </Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable
+                        <Pressable
+              ref={scanBtnRef}
               style={[styles.iconBtn, { backgroundColor: colors.secondary }]}
               onPress={handleOpenScanner}
             >
               <Feather name="maximize" size={20} color={colors.primary} />
             </Pressable>
             <Pressable
+              ref={newGroupBtnRef}
               style={[styles.newBtn, { backgroundColor: colors.primary }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -250,7 +285,7 @@ export default function GroupsScreen() {
             >
               <LinearGradient
                 colors={colors.isDark ? ["#0D1F3C", "#0A2240"] : ["#FFFFFF", "#EFF6FF"]}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
@@ -340,7 +375,7 @@ export default function GroupsScreen() {
 
           {Platform.OS !== "web" ? (
             <CameraView
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
               onBarcodeScanned={scanProcessed ? undefined : handleBarCodeScanned}
@@ -405,9 +440,15 @@ export default function GroupsScreen() {
                 </Pressable>
               </View>
             </View>
-          )}
+           )}
         </View>
       </Modal>
+
+      <WalkthroughOverlay
+        visible={showWalkthrough}
+        steps={walkthroughSteps}
+        onDone={dismissWalkthrough}
+      />
     </View>
   );
 }
@@ -605,7 +646,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   scannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     gap: 32,
@@ -647,7 +688,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   joinConfirmOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.65)",
     alignItems: "center",
     justifyContent: "flex-end",
