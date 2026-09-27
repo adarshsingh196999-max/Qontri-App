@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import BusinessEmptyIllustration from "@/components/BusinessEmptyIllustration";
 import { DatePickerField } from "@/components/DatePickerField";
 import { useMockAuth } from "@/context/MockAuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -244,12 +245,33 @@ export default function BusinessScreen() {
             </View>
           ) : trips.length === 0 ? (
             <View style={[s.emptyWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={s.emptyEmoji}>💼</Text>
-              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No business trips yet</Text>
-              <Text style={[s.emptyText, { color: colors.mutedForeground }]}>
-                Create a trip, scan your bills, and export a reimbursement report instantly.
+              <BusinessEmptyIllustration width={160} height={160} />
+              <Text style={[s.emptyTitle, { color: colors.foreground, marginTop: 8 }]}>
+                For work trips & client visits
               </Text>
-              <Pressable style={s.emptyBtn} onPress={() => setShowNew(true)}>
+
+              <View style={s.emptyChecklist}>
+                <View style={s.emptyCheckRow}>
+                  <Feather name="check-circle" size={16} color="#4A90D9" />
+                  <Text style={[s.emptyCheckText, { color: colors.mutedForeground }]}>
+                    Create a trip for each work journey
+                  </Text>
+                </View>
+                <View style={s.emptyCheckRow}>
+                  <Feather name="check-circle" size={16} color="#4A90D9" />
+                  <Text style={[s.emptyCheckText, { color: colors.mutedForeground }]}>
+                    Add your bills
+                  </Text>
+                </View>
+                <View style={s.emptyCheckRow}>
+                  <Feather name="check-circle" size={16} color="#4A90D9" />
+                  <Text style={[s.emptyCheckText, { color: colors.mutedForeground }]}>
+                    Export a PDF report for reimbursement
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable style={[s.emptyBtn, { marginTop: 8 }]} onPress={() => setShowNew(true)}>
                 <Text style={s.emptyBtnText}>+ Create First Trip</Text>
               </Pressable>
             </View>
@@ -330,6 +352,9 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   emptyBtn: { backgroundColor: "#4A90D9", borderRadius: 22, paddingVertical: 10, paddingHorizontal: 20, marginTop: 6 },
   emptyBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#fff" },
+    emptyChecklist: { alignSelf: "stretch", marginTop: 16, marginBottom: 8, gap: 10, paddingHorizontal: 8 },
+  emptyCheckRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  emptyCheckText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   tripCard: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
   tripCardHeader: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
   tripIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(74,144,217,0.12)", alignItems: "center", justifyContent: "center" },
