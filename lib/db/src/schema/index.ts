@@ -62,6 +62,8 @@ export const groupsTable = pgTable("groups", {
   description: text("description"),
   tagSerial: serial("tag_serial"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: text("deleted_by"),
 });
 
 export const groupMembersTable = pgTable("group_members", {

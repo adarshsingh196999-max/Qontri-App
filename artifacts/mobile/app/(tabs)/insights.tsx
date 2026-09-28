@@ -538,7 +538,7 @@ function AddExpenseModal({
 export default function IETScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { token, userId } = useMockAuth();
+  const { token, userId, userEmail } = useMockAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const [expenses, setExpenses] = useState<IETExpense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -818,14 +818,18 @@ useEffect(() => {
   const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem("walkthrough:iet:v1").then((seen) => {
+    if (!userEmail) return;
+    const key = `walkthrough:iet:v1:${userEmail}`;
+    AsyncStorage.getItem(key).then((seen) => {
       if (!seen) setShowWalkthrough(true);
     });
-  }, []);
+  }, [userEmail]);
 
   const dismissWalkthrough = () => {
     setShowWalkthrough(false);
-    AsyncStorage.setItem("walkthrough:iet:v1", "1");
+    if (userEmail) {
+      AsyncStorage.setItem(`walkthrough:iet:v1:${userEmail}`, "1");
+    }
   };
 
   const walkthroughSteps: WalkthroughStep[] = [

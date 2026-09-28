@@ -24,6 +24,7 @@ import { AmountText } from "@/components/AmountText";
 import WalkthroughOverlay, { WalkthroughStep } from "@/components/WalkthroughOverlay";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useMockAuth } from "@/context/MockAuthContext";
 
 interface QRGroupData {
   q: string;
@@ -34,20 +35,26 @@ export default function GroupsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
       const { groups, getMemberBalance, currentUserId, joinGroup, refreshGroups, currentUserName } = useApp();
+        const { userEmail } = useMockAuth();
       
         const newGroupBtnRef = useRef<View>(null);
   const scanBtnRef = useRef<View>(null);
+    const navyStripeRef = useRef<View>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem("walkthrough:groups:v1").then((seen) => {
+    if (!userEmail) return;
+    const key = `walkthrough:groups:v2:${userEmail}`;
+    AsyncStorage.getItem(key).then((seen) => {
       if (!seen) setShowWalkthrough(true);
     });
-  }, []);
+  }, [userEmail]);
 
   const dismissWalkthrough = () => {
     setShowWalkthrough(false);
-    AsyncStorage.setItem("walkthrough:groups:v1", "1");
+    if (userEmail) {
+      AsyncStorage.setItem(`walkthrough:groups:v2:${userEmail}`, "1");
+    }
   };
 
   const walkthroughSteps: WalkthroughStep[] = [
@@ -59,7 +66,12 @@ export default function GroupsScreen() {
     {
       ref: scanBtnRef,
       title: "Scan to join",
-      body: "Tap to scan a QR code shared by a friend and join their group instantly.",
+      body: "Tap the scan icon to scan a QR code shared by a friend and join instantly.",
+    },
+    {
+      ref: navyStripeRef,
+      title: "Or join with a code",
+      body: "No QR to scan? Ask your friend for the group code and tap here to join.",
     },
   ];
 
@@ -78,6 +90,9 @@ export default function GroupsScreen() {
 
   const [search, setSearch] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+    const [showEnterCode, setShowEnterCode] = useState(false);
+  const [enteredCode, setEnteredCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [scanProcessed, setScanProcessed] = useState(false);
   const [pendingJoinTag, setPendingJoinTag] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -214,6 +229,28 @@ export default function GroupsScreen() {
           )}
         </View>
       </View>
+
+      <Pressable
+        ref={navyStripeRef}
+        collapsable={false}
+        style={[styles.joinStripe, { backgroundColor: colors.primary }]}
+        onPress={() => {
+          setEnteredCode("");
+          setCodeError(null);
+          setShowEnterCode(true);
+        }}
+      >
+          <Text style={[styles.joinStripeText, { color: "#FFFFFF" }]}>
+            Have a group code?
+          </Text>
+          <View style={styles.joinStripeRight}>
+            <Text style={[styles.joinStripeAction, { color: "#FFFFFF" }]}>
+              Join now
+            </Text>
+            <Feather name="arrow-right" size={13} color="#FFFFFF" />
+          </View>
+        </Pressable>
+      
 
       <FlatList
         data={filtered}
@@ -444,6 +481,100 @@ export default function GroupsScreen() {
         </View>
       </Modal>
 
+      <Modal
+        visible={showEnterCode}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEnterCode(false)}
+      >
+        <Pressable
+          style={styles.codeModalOverlay}
+          onPress={() => setShowEnterCode(false)}
+        >
+          <Pressable
+            style={[styles.codeModalCard, { backgroundColor: colors.card }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.codeModalIcon, { backgroundColor: colors.secondary }]}>
+              <Feather name="hash" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.codeModalTitle, { color: colors.foreground }]}>
+              Join a group with code
+            </Text>
+            <Text style={[styles.codeModalSub, { color: colors.mutedForeground }]}>
+              Ask the group creator for the code, or find it in your invite message.
+            </Text>
+
+            <TextInput
+              style={[
+                styles.codeModalInput,
+                {
+                  color: colors.foreground,
+                  borderColor: codeError ? "#EF4444" : colors.border,
+                  backgroundColor: colors.background,
+                },
+              ]}
+              placeholder="e.g. 1021"
+              placeholderTextColor={colors.mutedForeground}
+              value={enteredCode}
+              onChangeText={(t) => {
+                setCodeError(null);
+                setEnteredCode(t.replace(/[^\d]/g, ""));
+              }}
+              keyboardType="number-pad"
+              maxLength={8}
+              autoFocus
+            />
+
+            {codeError ? (
+              <Text style={styles.codeModalError}>{codeError}</Text>
+            ) : null}
+
+            <View style={styles.codeModalActions}>
+              <Pressable
+                style={[styles.codeModalBtn, { borderColor: colors.border }]}
+                onPress={() => setShowEnterCode(false)}
+              >
+                <Text style={[styles.codeModalBtnText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.codeModalBtn,
+                  { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+                onPress={async () => {
+                  const code = enteredCode.trim();
+                  if (code.length < 3) {
+                    setCodeError("Enter a valid code.");
+                    return;
+                  }
+                  try {
+                    const group = await joinGroup(code);
+                    if (group) {
+                      setShowEnterCode(false);
+                      setEnteredCode("");
+                      router.push(`/group/${group.id}`);
+                    } else {
+                      setCodeError("Group not found. Check the code.");
+                    }
+                  } catch (e: unknown) {
+                    setCodeError(
+                      e instanceof Error ? e.message : "Could not join this group."
+                    );
+                  }
+                }}
+              >
+                <Text style={[styles.codeModalBtnText, { color: "#fff" }]}>
+                  Join
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <WalkthroughOverlay
         visible={showWalkthrough}
         steps={walkthroughSteps}
@@ -455,6 +586,75 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  codeModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  codeModalCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 22,
+    padding: 24,
+    alignItems: "center",
+  },
+  codeModalIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  codeModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  codeModalSub: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  codeModalInput: {
+    width: "100%",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  codeModalError: {
+    fontSize: 13,
+    color: "#EF4444",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  codeModalActions: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginTop: 6,
+  },
+  codeModalBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  codeModalBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 12,
@@ -492,6 +692,29 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+  },
+    joinStripe: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginTop: 4,
+    borderRadius: 10,
+  },
+  joinStripeText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  joinStripeRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  joinStripeAction: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   searchBar: {
     flexDirection: "row",
@@ -617,6 +840,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
   },
+
   scannerContainer: {
     flex: 1,
     backgroundColor: "#000",

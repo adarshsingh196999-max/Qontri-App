@@ -160,15 +160,19 @@ export default function SignInPage() {
     try {
       const url = `${API_BASE}/auth/send-otp`;
 
-      const hasExternal = await externalConnectivityProbe();
+      // Skip the external connectivity probe on web — Google's generate_204
+      // endpoint doesn't send CORS headers, so it always fails in browsers.
+      if (Platform.OS !== "web") {
+        const hasExternal = await externalConnectivityProbe();
 
-      if (!hasExternal) {
-        const msg =
-          "No general internet connectivity detected (external probe failed).";
+        if (!hasExternal) {
+          const msg =
+            "No general internet connectivity detected (external probe failed).";
 
-        Sentry.captureMessage(msg);
-        setLocalError("Network error. Check connection.");
-        return;
+          Sentry.captureMessage(msg);
+          setLocalError("Network error. Check connection.");
+          return;
+        }
       }
 
       try {

@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { Router } from "express";
 import {
   activityEntriesTable,
@@ -131,13 +131,15 @@ router.get("/groups", requireAuth, async (req, res) => {
       .from(groupMembersTable)
       .where(eq(groupMembersTable.ownerEmail, email));
 
-    const groupIds = [...new Set(memberRows.map((r) => r.groupId))];
+      const groupIds = [...new Set(memberRows.map((r) => r.groupId))] as string[];
     if (groupIds.length === 0) {
       res.json({ groups: [] });
       return;
     }
 
-    const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
+      const groups = await db.select().from(groupsTable).where(
+      and(inArray(groupsTable.id, groupIds), isNull(groupsTable.deletedAt))
+    );
     const payloads = await buildGroupPayloads(groupIds);
 
     // Build a map from groupId → payload to avoid index-order mismatch
@@ -186,7 +188,9 @@ router.post("/groups", requireAuth, async (req, res) => {
 
   try {
     // Upsert group
-    const existing = await db.select().from(groupsTable).where(eq(groupsTable.id, id)).limit(1);
+      const existing = await db.select().from(groupsTable).where(
+      and(eq(groupsTable.id, id), isNull(groupsTable.deletedAt))
+    ).limit(1);
     if (existing.length > 0) {
       res.json({ tagNumber: tagFromSerial(existing[0].tagSerial) });
       return;
@@ -274,8 +278,12 @@ router.delete("/groups/:id", requireAuth, async (req, res) => {
       res.json({ success: true });
       return;
     }
-    // Owner: delete entire group (cascades)
-    await db.delete(groupsTable).where(eq(groupsTable.id, id));
+    // Owner: soft-delete the group — keep the row, mark deleted_at + deleted_by
+    await db
+      .update(groupsTable)
+      .set({ deletedAt: new Date(), deletedBy: email })
+      .where(eq(groupsTable.id, id));
+    req.log.info({ groupId: id, email }, "Group soft-deleted");
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete group");
@@ -351,7 +359,7 @@ router.post("/groups/join", requireAuth, async (req, res) => {
     const groups = await db
       .select()
       .from(groupsTable)
-      .where(eq(groupsTable.tagSerial, serial))
+      .where(and(eq(groupsTable.tagSerial, serial), isNull(groupsTable.deletedAt)))
       .limit(1);
 
     if (groups.length === 0) {
