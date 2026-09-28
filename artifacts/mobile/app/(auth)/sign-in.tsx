@@ -132,6 +132,7 @@ const DEFAULT_COUNTRY = COUNTRY_OPTIONS.find((country) => country.code === "IN")
 
 export default function SignInPage() {
   const { signIn } = useMockAuth();
+    const isWeb = Platform.OS === "web";
 
   const [step, setStep] = useState<Step>("email");
   const [loginMethod, setLoginMethod] = useState<AuthMethod>("mobile");
@@ -143,7 +144,7 @@ export default function SignInPage() {
   const [localError, setLocalError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const otpRefs = useRef<(TextInput | null)[]>([]);
+  const hiddenOtpRef = useRef<TextInput>(null);
 
   const handleSendCode = async () => {
     setLocalError("");
@@ -266,7 +267,7 @@ export default function SignInPage() {
       setStep("otp");
 
       setTimeout(() => {
-        otpRefs.current[0]?.focus();
+        hiddenOtpRef.current?.focus();
       }, 100);
     } catch (error: any) {
       Sentry.captureException(error);
@@ -400,7 +401,7 @@ export default function SignInPage() {
       setOtp(["", "", "", "", "", ""]);
       setStep("otp");
       setTimeout(() => {
-        otpRefs.current[0]?.focus();
+        hiddenOtpRef.current?.focus();
       }, 100);
     } catch (error: any) {
       Sentry.captureException(error);
@@ -498,63 +499,10 @@ export default function SignInPage() {
   const otpBackLabel = loginMethod === "mobile" ? "← Change number" : "← Change email";
   const otpTitle = loginMethod === "mobile" ? "Check your phone" : "Check your email";
 
-  const handleOtpChange = (
-    value: string,
-    index: number
-  ) => {
-    const newOtp = [...otp];
-
-    if (value.length > 1) {
-      const digits = value
-        .replace(/\D/g, "")
-        .slice(0, 6)
-        .split("");
-
-      digits.forEach((d, i) => {
-        if (index + i < 6) {
-          newOtp[index + i] = d;
-        }
-      });
-
-      setOtp(newOtp);
-
-      otpRefs.current[
-        Math.min(index + digits.length, 5)
-      ]?.focus();
-    } else {
-      newOtp[index] = value.replace(/\D/g, "");
-
-      setOtp(newOtp);
-
-      if (value && index < 5) {
-        otpRefs.current[index + 1]?.focus();
-      }
-    }
-  };
-
-  const handleOtpKeyPress = (
-    key: string,
-    index: number
-  ) => {
-    if (
-      key === "Backspace" &&
-      !otp[index] &&
-      index > 0
-    ) {
-      const newOtp = [...otp];
-
-      newOtp[index - 1] = "";
-
-      setOtp(newOtp);
-
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
   return (
     <ImageBackground
-      source={require("@/assets/images/splash.png")}
-      style={styles.bg}
+      source={isWeb ? undefined : require("@/assets/images/splash.png")}
+      style={[styles.bg, isWeb && { backgroundColor: "#0F2040" }]}
       resizeMode="cover"
     >
       <KeyboardAvoidingView
@@ -566,12 +514,24 @@ export default function SignInPage() {
         style={styles.flex}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            isWeb &&
+              ({
+                minHeight: "100vh",
+                justifyContent: "center",
+              } as any),
+          ]}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.spacer} />
+          {!isWeb && <View style={styles.spacer} />}
 
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              isWeb && { maxWidth: 420, width: "100%", alignSelf: "center" },
+            ]}
+          >
             {step === "email" ? (
               <>
                 <Text style={styles.title}>
@@ -704,37 +664,42 @@ export default function SignInPage() {
                   {otpTitle}
                 </Text>
 
-                <View style={styles.otpRow}>
+                <Pressable
+                  onPress={() => hiddenOtpRef.current?.focus()}
+                  style={styles.otpRow}
+                >
                   {otp.map((digit, i) => (
-                    <TextInput
+                    <View
                       key={i}
-                      ref={(ref) => {
-                        otpRefs.current[i] = ref;
-                      }}
                       style={[
                         styles.otpBox,
-                        digit
-                          ? styles.otpBoxFilled
-                          : null,
+                        digit ? styles.otpBoxFilled : null,
                       ]}
-                      value={digit}
-                      onChangeText={(v) =>
-                        handleOtpChange(v, i)
-                      }
-                      onKeyPress={({
-                        nativeEvent,
-                      }) =>
-                        handleOtpKeyPress(
-                          nativeEvent.key,
-                          i
-                        )
-                      }
-                      keyboardType="number-pad"
-                      maxLength={1}
-                      editable={!loading}
-                    />
+                    >
+                      <Text style={styles.otpDigit}>{digit}</Text>
+                    </View>
                   ))}
-                </View>
+
+                  <TextInput
+                    ref={hiddenOtpRef}
+                    style={styles.hiddenOtpInput}
+                    value={otp.join("")}
+                    onChangeText={(text) => {
+                      const digits = text.replace(/\D/g, "").slice(0, 6).split("");
+                      const next = ["", "", "", "", "", ""];
+                      digits.forEach((d, i) => {
+                        if (i < 6) next[i] = d;
+                      });
+                      setOtp(next);
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoComplete="sms-otp"
+                    textContentType="oneTimeCode"
+                    editable={!loading}
+                    autoFocus
+                  />
+                </Pressable>
 
                 {localError ? (
                   <Text style={styles.error}>
@@ -850,6 +815,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginBottom: 12,
+    position: "relative",
   },
 
   otpBox: {
@@ -859,13 +825,29 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
     borderRadius: 12,
-    fontSize: 22,
-    textAlign: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   otpBoxFilled: {
     borderColor: PRIMARY,
     backgroundColor: "#EFF6FF",
+  },
+
+  otpDigit: {
+    fontSize: 22,
+    fontWeight: "600",
+    textAlign: "center",
+    color: "#111827",
+  },
+
+  hiddenOtpInput: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
+    left: 0,
+    top: 0,
   },
 
   error: {

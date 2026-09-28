@@ -103,7 +103,7 @@ export default function GroupsScreen() {
     g.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 44 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   const handleOpenScanner = async () => {

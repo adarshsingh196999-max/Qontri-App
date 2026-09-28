@@ -1,7 +1,5 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Redirect, Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
@@ -123,29 +121,6 @@ function ProfileSetupModal({ token }: { token: string }) {
   );
 }
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Groups</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="insights">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>IET</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="business">
-        <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
-        <Label>Business</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>Profile</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
@@ -251,12 +226,36 @@ export default function TabLayout() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  return (
+  const content = (
     <>
-      {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
+      <ClassicTabLayout />
       <ProfileSetupModal token={token} />
     </>
   );
+
+  // On web, constrain the entire tab navigator to a phone-shaped column,
+  // centered in the viewport. Native (Android/iOS) is unchanged.
+  if (Platform.OS === "web") {
+    return (
+      <View
+        style={
+          {
+            flex: 1,
+            maxWidth: 480,
+            width: "100%",
+            alignSelf: "center",
+            height: "100vh",
+            maxHeight: "100vh",
+            overflow: "hidden",
+          } as any
+        }
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return content;
 }
 
 const ms = StyleSheet.create({

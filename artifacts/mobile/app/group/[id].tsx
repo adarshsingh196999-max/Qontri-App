@@ -220,7 +220,7 @@ export default function GroupDetailScreen() {
 
   const inviteTag = group.tagNumber ?? group.id;
   const inviteLink = `https://qontri.app/join/${inviteTag.replace("#", "")}`;
-  const inviteText = `Hey! Join "${group.emoji} ${group.name}" on Qontri.\nGroup tag: ${inviteTag}\n\nDownload the Qontri app and scan the QR code or enter the tag to join.\nhttps://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN`;
+   const inviteText = `Hey! Join "${group.emoji} ${group.name}" on Qontri.\nGroup tag: ${inviteTag}\n\nAndroid: https://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN\niPhone: https://qontri-expo-app.expo.app`;
 
   const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

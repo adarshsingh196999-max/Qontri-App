@@ -45,7 +45,7 @@ export default function NewGroupScreen() {
 
   const qrData = createdTag ? JSON.stringify({ q: "qontri", tag: createdTag }) : "";
   const inviteLink = createdTag ? `https://qontri.app/join/${createdTag.replace("#", "")}` : "";
-  const whatsappMessage = `Hey! I've created a group "${createdGroupName}" on Qontri to split expenses.\nTag: ${createdTag}\n\nDownload Qontri:\nhttps://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN`;
+   const whatsappMessage = `Hey! I've created a group "${createdGroupName}" on Qontri to split expenses.\nTag: ${createdTag}\n\nAndroid: https://play.google.com/store/apps/details?id=com.qontri.app&hl=en_IN\niPhone: https://qontri-expo-app.expo.app`;
 
   const handleCreate = async () => {
     if (!name.trim() || creating) return;

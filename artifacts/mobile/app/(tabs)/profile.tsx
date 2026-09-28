@@ -91,7 +91,7 @@ export default function ProfileScreen() {
     "🦁","🐼","🦋","🌈","⚡","🔥","💫","🎮",
   ];
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+const topPad = Platform.OS === "web" ? 44 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   const handleSaveName = () => {
@@ -714,6 +714,11 @@ const styles = StyleSheet.create({
   versionWrap: {
     alignItems: "center",
     paddingBottom: 16,
+  },
+    madeInText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 4,
   },
   versionText: {
     fontSize: 13,
