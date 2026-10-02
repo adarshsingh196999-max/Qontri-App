@@ -175,7 +175,7 @@ export default function GroupDetailScreen() {
   const insights = id ? computeGroupInsights(id) : [];
   const banter = id ? getGroupBanter(id) : [];
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   if (!group) {

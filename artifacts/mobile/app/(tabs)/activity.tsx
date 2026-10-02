@@ -47,7 +47,7 @@ export default function ActivityScreen() {
   const { getRecentActivity } = useApp();
 
   const activity = getRecentActivity();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   return (

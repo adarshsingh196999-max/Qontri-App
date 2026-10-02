@@ -40,7 +40,7 @@ export default function NewGroupScreen() {
   const [createdTag, setCreatedTag] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   const qrData = createdTag ? JSON.stringify({ q: "qontri", tag: createdTag }) : "";

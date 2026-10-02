@@ -548,7 +548,7 @@ export default function IETScreen() {
   const [budget, setBudget] = useState(0);
   const [showBudget, setShowBudget] = useState(false);
   const [localBudgetLoaded, setLocalBudgetLoaded] = useState(false);
-  const topPad = Platform.OS === "web" ? 44 : Math.max(insets.top, 16);
+  const topPad = Platform.OS === "web" ? 32 : Math.max(insets.top, 16);
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, 16);
 
   const BUDGET_STORAGE_KEY = "qontri_iet_budget_v1";

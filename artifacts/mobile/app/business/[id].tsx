@@ -252,7 +252,7 @@ export default function TripDetailScreen() {
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [exporting, setExporting] = useState(false);
   const [profileName, setProfileName] = useState("");
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
 
   const load = useCallback(async () => {
     if (!token || !id) return;

@@ -37,7 +37,7 @@ export default function SettleScreen() {
     amountParam ? String(Math.round(parseFloat(amountParam))) : ""
   );
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
 
   const canSettle = parseFloat(amount) > 0 && !!fromMember && !!toMember;

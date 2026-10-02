@@ -39,7 +39,7 @@ export default function SettleScreen() {
   const { groups, getGroupBalances, currentUserId } = useApp();
   const [filter, setFilter] = useState<FilterTab>("all");
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   // Aggregate cross-group balances per person (matched by name)
