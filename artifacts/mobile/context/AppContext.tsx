@@ -113,6 +113,7 @@ interface AppContextValue {
   addSettlement: (settlement: Omit<Settlement, "id">) => Promise<Settlement>;
   getGroupExpenses: (groupId: string) => Expense[];
   getGroupSettlements: (groupId: string) => Settlement[];
+  getNetBalances: (groupId: string) => Record<string, number>;
   getGroupBalances: (groupId: string) => Balance[];
   getSimplifiedDebts: (groupId: string) => Balance[];
   getMemberBalance: (groupId: string, memberId: string) => number;
@@ -168,20 +169,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activitiesRef.current = activities;
   }, [activities]);
 
-  // ── API helper ──────────────────────────────────────────────────────────────
-
   const apiFetch = useCallback(
     async (path: string, options?: RequestInit): Promise<unknown> => {
-const res = await fetch(`${API_BASE}${path}`, { 
-           ...options,
-           headers: {
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
           ...(options?.headers ?? {}),
         },
       });
       if (res.status === 401) {
-        // Session expired or invalid — sign out so user can log in again
         await signOut();
         throw new Error("Session expired. Please sign in again.");
       }
@@ -193,8 +191,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     },
     [token, signOut]
   );
-
-  // ── Banter ──────────────────────────────────────────────────────────────────
 
   const pushBanter = useCallback((groupId: string, message: string, emoji: string) => {
     const entry: BanterMessage = {
@@ -209,8 +205,6 @@ const res = await fetch(`${API_BASE}${path}`, {
       [groupId]: [entry, ...(prev[groupId] ?? [])].slice(0, 30),
     }));
   }, []);
-
-  // ── Load from API ───────────────────────────────────────────────────────────
 
   const loadFromApi = useCallback(async () => {
     if (!token || !userId) return;
@@ -264,7 +258,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     }
   }, [token, userId, currentUserId, apiFetch]);
 
-  // Reload when auth changes
   useEffect(() => {
     if (token && userId) {
       void loadFromApi();
@@ -278,7 +271,6 @@ const res = await fetch(`${API_BASE}${path}`, {
 
   const refreshGroups = useCallback(() => loadFromApi(), [loadFromApi]);
 
-  // Refresh when app comes back to foreground
   useEffect(() => {
     if (!token || !userId) return;
     const sub = AppState.addEventListener("change", (next) => {
@@ -287,7 +279,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     return () => sub.remove();
   }, [token, userId, loadFromApi]);
 
-  // Poll every 10s while app is active
   useEffect(() => {
     if (!token || !userId) return;
     const id = setInterval(() => {
@@ -295,8 +286,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     }, 10_000);
     return () => clearInterval(id);
   }, [token, userId, loadFromApi]);
-
-  // ── Activity helpers ────────────────────────────────────────────────────────
 
   const logActivity = useCallback(
     async (entry: Omit<ActivityEntry, "id">) => {
@@ -308,13 +297,11 @@ const res = await fetch(`${API_BASE}${path}`, {
           body: JSON.stringify(full),
         });
       } catch {
-        // Non-critical; ignore
+        // Non-critical
       }
     },
     [apiFetch]
   );
-
-  // ── createGroup ─────────────────────────────────────────────────────────────
 
   const createGroup = useCallback(
     async (name: string, emoji: string, description?: string): Promise<Group> => {
@@ -334,7 +321,6 @@ const res = await fetch(`${API_BASE}${path}`, {
         createdAt: new Date().toISOString(),
       };
 
-      // Optimistic update
       setGroups((prev) => [group, ...prev]);
 
       try {
@@ -356,7 +342,6 @@ const res = await fetch(`${API_BASE}${path}`, {
           return { ...group, tagNumber: data.tagNumber };
         }
       } catch {
-        // Revert on failure
         setGroups((prev) => prev.filter((g) => g.id !== group.id));
         throw new Error("Failed to create group. Please try again.");
       }
@@ -364,8 +349,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     },
     [currentUserId, currentUserName, currentUserUpiId, currentUserAvatar, apiFetch]
   );
-
-  // ── updateGroup ─────────────────────────────────────────────────────────────
 
   const updateGroup = useCallback(
     async (groupId: string, updates: Partial<Group>) => {
@@ -396,15 +379,12 @@ const res = await fetch(`${API_BASE}${path}`, {
           }
         }
       } catch {
-        // Revert
         if (existing) setGroups((prev) => prev.map((g) => (g.id === groupId ? existing : g)));
         throw new Error("Failed to update group.");
       }
     },
     [groups, apiFetch, logActivity]
   );
-
-  // ── deleteGroup ─────────────────────────────────────────────────────────────
 
   const deleteGroup = useCallback(
     async (groupId: string) => {
@@ -427,8 +407,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     },
     [groups, expenses, settlements, apiFetch]
   );
-
-  // ── joinGroup ───────────────────────────────────────────────────────────────
 
   const joinGroup = useCallback(
     async (tag: string): Promise<Group | null> => {
@@ -487,8 +465,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [currentUserId, currentUserName, apiFetch]
   );
 
-  // ── addMember ───────────────────────────────────────────────────────────────
-
   const addMember = useCallback(
     async (groupId: string, name: string): Promise<Member> => {
       const member: Member = {
@@ -523,8 +499,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [apiFetch]
   );
 
-  // ── removeMember ────────────────────────────────────────────────────────────
-
   const removeMember = useCallback(
     async (groupId: string, memberId: string) => {
       const prevGroups = [...groups];
@@ -544,8 +518,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     },
     [groups, apiFetch]
   );
-
-  // ── addExpense ──────────────────────────────────────────────────────────────
 
   const addExpense = useCallback(
     async (expenseData: Omit<Expense, "id">): Promise<Expense> => {
@@ -608,8 +580,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [groups, expenses, settlements, currentUserId, apiFetch, pushBanter]
   );
 
-  // ── updateExpense ───────────────────────────────────────────────────────────
-
   const updateExpense = useCallback(
     async (expenseId: string, updates: Partial<Omit<Expense, "id" | "groupId">>) => {
       const existing = expenses.find((e) => e.id === expenseId);
@@ -640,8 +610,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [expenses, apiFetch, logActivity]
   );
 
-  // ── deleteExpense ───────────────────────────────────────────────────────────
-
   const deleteExpense = useCallback(
     async (expenseId: string) => {
       const existing = expenses.find((e) => e.id === expenseId);
@@ -665,8 +633,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     },
     [expenses, apiFetch, logActivity]
   );
-
-  // ── addSettlement ───────────────────────────────────────────────────────────
 
   const addSettlement = useCallback(
     async (settlementData: Omit<Settlement, "id">): Promise<Settlement> => {
@@ -719,8 +685,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [groups, expenses, settlements, currentUserId, apiFetch, pushBanter]
   );
 
-  // ── Profile setters ─────────────────────────────────────────────────────────
-
   const setCurrentUserName = useCallback(
     async (name: string) => {
       setCurrentUserNameState(name);
@@ -734,7 +698,6 @@ const res = await fetch(`${API_BASE}${path}`, {
       );
       try {
         await apiFetch("/me", { method: "PUT", body: JSON.stringify({ name }) });
-        // Also sync member names in all groups
         for (const g of groups) {
           const myMember = g.members.find((m) => m.id === currentUserId);
           if (myMember) {
@@ -745,7 +708,7 @@ const res = await fetch(`${API_BASE}${path}`, {
           }
         }
       } catch {
-        // Non-critical; state already updated
+        // Non-critical
       }
     },
     [currentUserId, groups, apiFetch]
@@ -812,8 +775,6 @@ const res = await fetch(`${API_BASE}${path}`, {
     [currentUserId, apiFetch]
   );
 
-  // ── Read-only computations ──────────────────────────────────────────────────
-
   const getGroupExpenses = useCallback(
     (groupId: string) => expenses.filter((e) => e.groupId === groupId),
     [expenses]
@@ -824,100 +785,127 @@ const res = await fetch(`${API_BASE}${path}`, {
     [settlements]
   );
 
-  const getGroupBalances = useCallback(
-    (groupId: string): Balance[] => {
+  // ── Balance computation (correct) ─────────────────────────────────────────
+  //
+  // Net balance per member is the single source of truth:
+  //   net(m) = Σ(amount m paid) − Σ(m's share of expenses) − Σ(settlements m sent) + Σ(settlements m received)
+  //
+  // Invariant: settling between A and B changes only A's and B's nets.
+  // Every display derives from getNetBalances. Never sum from simplified debts.
+
+  const getNetBalances = useCallback(
+    (groupId: string): Record<string, number> => {
+      const group = groups.find((g) => g.id === groupId);
+      if (!group) return {};
+
+      const net: Record<string, number> = {};
+      for (const member of group.members) net[member.id] = 0;
+
       const groupExpenses = expenses.filter((e) => e.groupId === groupId);
       const groupSettlements = settlements.filter((s) => s.groupId === groupId);
-      const group = groups.find((g) => g.id === groupId);
-      if (!group) return [];
-
-      const netBalance: Record<string, Record<string, number>> = {};
 
       for (const expense of groupExpenses) {
+        net[expense.paidById] = (net[expense.paidById] ?? 0) + expense.amount;
         for (const split of expense.splits) {
-          if (split.memberId === expense.paidById) continue;
-          const owerId = split.memberId;
-          const lenderId = expense.paidById;
-          if (!netBalance[owerId]) netBalance[owerId] = {};
-          netBalance[owerId][lenderId] = (netBalance[owerId][lenderId] ?? 0) + split.amount;
+          net[split.memberId] = (net[split.memberId] ?? 0) - split.amount;
         }
       }
 
       for (const settlement of groupSettlements) {
-        const payerId = settlement.fromId;
-        const receiverId = settlement.toId;
-        if (netBalance[payerId]?.[receiverId]) {
-          netBalance[payerId][receiverId] = Math.max(
-            0,
-            (netBalance[payerId][receiverId] ?? 0) - settlement.amount
-          );
-        }
+        net[settlement.fromId] = (net[settlement.fromId] ?? 0) + settlement.amount;
+        net[settlement.toId] = (net[settlement.toId] ?? 0) - settlement.amount;
       }
 
-      const balances: Balance[] = [];
-      for (const [fromId, toMap] of Object.entries(netBalance)) {
-        for (const [toId, amount] of Object.entries(toMap)) {
-          if (Math.round(amount) >= 1) balances.push({ fromId, toId, amount: Math.round(amount) });
-        }
-      }
-      return balances;
+      return net;
     },
-    [expenses, settlements, groups]
+    [groups, expenses, settlements]
   );
 
+  const getMemberBalance = useCallback(
+    (groupId: string, memberId: string): number => {
+      const net = getNetBalances(groupId);
+      return net[memberId] ?? 0;
+    },
+    [getNetBalances]
+  );
+
+  // Simplified debts: minimum transactions to zero out all nets. Display only.
   const getSimplifiedDebts = useCallback(
     (groupId: string): Balance[] => {
       const group = groups.find((g) => g.id === groupId);
       if (!group) return [];
 
-      const balances = getGroupBalances(groupId);
-      const net: Record<string, number> = {};
-      for (const member of group.members) net[member.id] = 0;
-      for (const b of balances) {
-        net[b.fromId] = (net[b.fromId] ?? 0) - b.amount;
-        net[b.toId] = (net[b.toId] ?? 0) + b.amount;
-      }
+      const net = getNetBalances(groupId);
 
-      const creditors = Object.entries(net)
-        .filter(([, v]) => Math.round(v) >= 1)
-        .sort((a, b) => b[1] - a[1]);
-      const debtors = Object.entries(net)
-        .filter(([, v]) => Math.round(v) <= -1)
-        .map(([id, v]) => [id, -v] as [string, number])
-        .sort((a, b) => b[1] - a[1]);
+      const creditors = group.members
+        .map((m) => ({ id: m.id, v: net[m.id] ?? 0 }))
+        .filter((c) => c.v > 0.5)
+        .sort((a, b) => b.v - a.v);
+
+      const debtors = group.members
+        .map((m) => ({ id: m.id, v: -(net[m.id] ?? 0) }))
+        .filter((d) => d.v > 0.5)
+        .sort((a, b) => b.v - a.v);
 
       const simplified: Balance[] = [];
       let ci = 0;
       let di = 0;
-      const cred = creditors.map(([id, v]) => ({ id, v }));
-      const debt = debtors.map(([id, v]) => ({ id, v }));
 
-      while (ci < cred.length && di < debt.length) {
-        const c = cred[ci];
-        const d = debt[di];
+      while (ci < creditors.length && di < debtors.length) {
+        const c = creditors[ci];
+        const d = debtors[di];
         const amount = Math.min(c.v, d.v);
-        if (Math.round(amount) >= 1) simplified.push({ fromId: d.id, toId: c.id, amount: Math.round(amount) });
+        if (amount > 0.5) {
+          simplified.push({
+            fromId: d.id,
+            toId: c.id,
+            amount: Math.round(amount * 100) / 100,
+          });
+        }
         c.v -= amount;
         d.v -= amount;
-        if (c.v < 0.01) ci++;
-        if (d.v < 0.01) di++;
+        if (c.v <= 0.5) ci++;
+        if (d.v <= 0.5) di++;
       }
+
       return simplified;
     },
-    [groups, getGroupBalances]
+    [groups, getNetBalances]
   );
 
-  const getMemberBalance = useCallback(
-    (groupId: string, memberId: string): number => {
-      const debts = getSimplifiedDebts(groupId);
-      let balance = 0;
-      for (const d of debts) {
-        if (d.toId === memberId) balance += d.amount;
-        if (d.fromId === memberId) balance -= d.amount;
+  // Raw pairwise debts. Signed: positive means fromId owes toId, negative flips.
+  const getGroupBalances = useCallback(
+    (groupId: string): Balance[] => {
+      const groupExpenses = expenses.filter((e) => e.groupId === groupId);
+      const groupSettlements = settlements.filter((s) => s.groupId === groupId);
+
+      const pairNets: Record<string, number> = {};
+
+      for (const expense of groupExpenses) {
+        for (const split of expense.splits) {
+          if (split.memberId === expense.paidById) continue;
+          const key = `${split.memberId}::${expense.paidById}`;
+          pairNets[key] = (pairNets[key] ?? 0) + split.amount;
+        }
       }
-      return balance;
+
+      for (const settlement of groupSettlements) {
+        const key = `${settlement.fromId}::${settlement.toId}`;
+        pairNets[key] = (pairNets[key] ?? 0) - settlement.amount;
+      }
+
+      const balances: Balance[] = [];
+      for (const [key, amount] of Object.entries(pairNets)) {
+        const [fromId, toId] = key.split("::");
+        if (amount > 0.5) {
+          balances.push({ fromId, toId, amount: Math.round(amount * 100) / 100 });
+        } else if (amount < -0.5) {
+          balances.push({ fromId: toId, toId: fromId, amount: Math.round(-amount * 100) / 100 });
+        }
+      }
+      return balances;
     },
-    [getSimplifiedDebts]
+    [expenses, settlements]
   );
 
   const computeGroupInsights = useCallback(
@@ -992,6 +980,7 @@ const res = await fetch(`${API_BASE}${path}`, {
         addSettlement,
         getGroupExpenses,
         getGroupSettlements,
+        getNetBalances,
         getGroupBalances,
         getSimplifiedDebts,
         getMemberBalance,

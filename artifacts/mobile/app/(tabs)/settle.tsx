@@ -36,32 +36,44 @@ interface PersonBalance {
 export default function SettleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { groups, getGroupBalances, currentUserId } = useApp();
+  const { groups, getNetBalances, currentUserId } = useApp();
   const [filter, setFilter] = useState<FilterTab>("all");
 
   const topPad = Platform.OS === "web" ? 32 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  // Aggregate cross-group balances per person (matched by name)
+  // Aggregate cross-group balances per person (matched by name).
+  // Uses raw net balances — not pairwise simplified debts — so numbers are
+  // exact and stable across settle actions.
   const personMap = useMemo(() => {
     const map = new Map<string, PersonBalance>();
     for (const group of groups) {
       if (!group.members.find((m) => m.id === currentUserId)) continue;
-      const balances = getGroupBalances(group.id);
-      for (const b of balances) {
-        if (b.amount <= 0) continue;
-        const isIOwe = b.fromId === currentUserId;
-        const otherId = isIOwe ? b.toId : b.fromId;
-        const otherMember = group.members.find((m) => m.id === otherId);
-        if (!otherMember) continue;
-        const key = otherMember.name.toLowerCase();
+      const nets = getNetBalances(group.id);
+      const myNet = nets[currentUserId] ?? 0;
+      if (Math.abs(myNet) < 0.5) continue;
+
+      // Distribute my net across other members proportional to their opposite-sign nets.
+      const mySign = Math.sign(myNet);
+      const others = group.members
+        .filter((m) => m.id !== currentUserId)
+        .map((m) => ({ member: m, net: nets[m.id] ?? 0 }))
+        .filter((o) => Math.sign(o.net) === -mySign && Math.abs(o.net) > 0.5);
+
+      const totalOther = others.reduce((s, o) => s + Math.abs(o.net), 0);
+      if (totalOther < 0.5) continue;
+
+      for (const o of others) {
+        const share = (Math.abs(myNet) * Math.abs(o.net)) / totalOther;
+        if (share < 0.5) continue;
+        const delta = mySign < 0 ? -share : share;
+        const key = o.member.name.toLowerCase();
         const existing = map.get(key) ?? {
-          name: otherMember.name,
-          color: otherMember.color,
+          name: o.member.name,
+          color: o.member.color,
           netAmount: 0,
           chips: [],
         };
-        const delta = isIOwe ? -b.amount : b.amount;
         existing.netAmount += delta;
         existing.chips.push({
           groupId: group.id,
@@ -73,7 +85,7 @@ export default function SettleScreen() {
       }
     }
     return map;
-  }, [groups, getGroupBalances, currentUserId]);
+  }, [groups, getNetBalances, currentUserId]);
 
   const persons = useMemo(
     () =>
