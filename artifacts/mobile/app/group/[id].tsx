@@ -15,6 +15,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -26,6 +27,8 @@ import { AmountText } from "@/components/AmountText";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Avatar } from "@/components/Avatar";
 import { CategoryBadge } from "@/components/CategoryBadge";
+import MemberBalanceStrip from "@/components/MemberBalanceStrip";
+import MemberBalanceModal from "@/components/MemberBalanceModal";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { ROLE_META } from "@/utils/groupInsights";
@@ -112,6 +115,7 @@ export default function GroupDetailScreen() {
   }, [refreshGroups]);
 
   const [tab, setTab] = useState<Tab>("overview");
+    const [balanceModalMemberId, setBalanceModalMemberId] = useState<string | null>(null);
   const [showSimplified, setShowSimplified] = useState(true);
 
   const [showQRModal, setShowQRModal] = useState(false);
@@ -130,7 +134,9 @@ export default function GroupDetailScreen() {
   const [removeMemberTarget, setRemoveMemberTarget] = useState<{ id: string; name: string } | null>(null);
 
   const group = groups.find((g) => g.id === id);
-  const expenses = getGroupExpenses(id ?? "");
+  const expenses = getGroupExpenses(id ?? "").sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   const settlements = getGroupSettlements(id ?? "");
   const debts = getSimplifiedDebts(id ?? "");
   const rawDebts = getGroupBalances(id ?? "");
@@ -409,26 +415,35 @@ export default function GroupDetailScreen() {
             </Text>
             <View style={styles.summaryMetaRight}>
               {group.tagNumber ? (
-                <View style={styles.tripTagPill}>
-                  <Feather name="hash" size={10} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.tripTagText}>
-                    Trip {group.tagNumber.replace("#", "")}
+                <View style={[styles.tripTagPill, styles.pillWhite]}>
+                  <Feather name="hash" size={10} color={colors.primary} />
+                  <Text style={[styles.tripTagText, { color: colors.primary }]}>
+                    Group code {group.tagNumber.replace("#", "")}
                   </Text>
                 </View>
               ) : null}
               <Pressable
-                style={styles.viewMembersHint}
+                style={[styles.viewMembersHint, styles.pillWhite]}
                 onPress={() => {
                   setShowMembersModal(true);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
               >
-                <Ionicons name="people-outline" size={12} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.viewMembersHintText}>View</Text>
+                <Ionicons name="people-outline" size={12} color={colors.primary} />
+                <Text style={[styles.viewMembersHintText, { color: colors.primary }]}>
+                  View
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
+
+        <MemberBalanceStrip
+          groupId={id ?? ""}
+          onPressMember={(memberId) => {
+            setBalanceModalMemberId(memberId);
+          }}
+        />
 
         <View style={styles.tabs}>
           {([
@@ -507,25 +522,39 @@ export default function GroupDetailScreen() {
                         </View>
                       </View>
                     </View>
-                    <View style={[styles.simplifyToggle, { backgroundColor: colors.isDark ? "#1E3A5F" : "#DBEAFE" }]}>
-                      <Pressable
-                        style={[styles.simplifyToggleBtn, showSimplified && { backgroundColor: colors.primary }]}
-                        onPress={() => { setShowSimplified(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                      >
-                        <Text style={[styles.simplifyToggleBtnText, { color: showSimplified ? "#fff" : colors.mutedForeground }]}>Simplified</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.simplifyToggleBtn, !showSimplified && { backgroundColor: colors.primary }]}
-                        onPress={() => { setShowSimplified(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                      >
-                        <Text style={[styles.simplifyToggleBtnText, { color: !showSimplified ? "#fff" : colors.mutedForeground }]}>All Debts</Text>
-                      </Pressable>
-                    </View>
                   </View>
                 )}
-                <Text style={[styles.balancesHeader, { color: colors.mutedForeground }]}>
-                  {showSimplified ? "OPTIMISED SETTLEMENT PLAN" : "ALL INDIVIDUAL DEBTS"}
-                </Text>
+
+                {savedTransactions > 0 && (
+                  <View style={styles.simplifyToggleInlineRow}>
+                    <Text
+                      style={[
+                        styles.simplifyToggleInlineLabel,
+                        { color: showSimplified ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      Simplified Payments
+                    </Text>
+                    <Switch
+                      value={!showSimplified}
+                      onValueChange={(val) => {
+                        setShowSimplified(!val);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      trackColor={{ false: colors.muted, true: colors.primary }}
+                      thumbColor="#ffffff"
+                    />
+                    <Text
+                      style={[
+                        styles.simplifyToggleInlineLabel,
+                        { color: !showSimplified ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      Normal Payments
+                    </Text>
+                  </View>
+                )}
+
                 {displayedDebts.filter((d) => Math.round(d.amount) >= 1).map((debt, idx) => {
                   const isYouOwe = debt.fromId === currentUserId;
                   const isOwedToYou = debt.toId === currentUserId;
@@ -1207,6 +1236,13 @@ export default function GroupDetailScreen() {
         }}
         onCancel={() => setShowDeleteGroupConfirm(false)}
       />
+            {/* Member balance breakdown modal */}
+      <MemberBalanceModal
+        visible={balanceModalMemberId !== null}
+        groupId={id ?? ""}
+        memberId={balanceModalMemberId}
+        onClose={() => setBalanceModalMemberId(null)}
+      />
 
       {/* Expense action sheet (long-press: edit or delete) */}
       <Modal
@@ -1560,6 +1596,20 @@ const styles = StyleSheet.create({
   simplifyBannerEmoji: { fontSize: 22 },
   simplifyBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
   simplifyBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+    simplifyToggleInlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 12,
+  },
+  simplifyToggleInlineLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  pillWhite: {
+    backgroundColor: "#FFFFFF",
+  },
   simplifyToggle: {
     flexDirection: "row",
     borderRadius: 10,
