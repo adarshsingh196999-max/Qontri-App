@@ -251,34 +251,40 @@ export default function MemberBalanceModal({
               ) : null}
             </View>
 
-            {/* Subtraction bar */}
-            <View
-              style={[
-                styles.resultBar,
-                {
-                  backgroundColor: isSettled
-                    ? "rgba(22,163,74,0.10)"
-                    : "rgba(239,68,68,0.08)",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.resultFormula,
-                  { color: isSettled ? "#166534" : "#991B1B" },
-                ]}
-              >
-                {fmt(totalPaid)} − {fmt(totalShare)} =
-              </Text>
-              <Text
-                style={[
-                  styles.resultValue,
-                  { color: isSettled ? "#166534" : "#991B1B" },
-                ]}
-              >
-                {fmtSigned(netFromExpenses)}
-              </Text>
-            </View>
+{/* Subtraction bar */}
+<View
+  style={[
+    styles.resultBar,
+    {
+      backgroundColor:
+        netFromExpenses >= 0
+          ? "rgba(22,163,74,0.10)"
+          : "rgba(239,68,68,0.08)",
+    },
+  ]}
+>
+  <Text
+    style={[
+      styles.resultFormula,
+      {
+        color: netFromExpenses >= 0 ? "#166534" : "#991B1B",
+      },
+    ]}
+  >
+    {fmt(totalPaid)} − {fmt(totalShare)} =
+  </Text>
+
+  <Text
+    style={[
+      styles.resultValue,
+      {
+        color: netFromExpenses >= 0 ? "#166534" : "#991B1B",
+      },
+    ]}
+  >
+    {fmtSigned(netFromExpenses)}
+  </Text>
+</View>
 
             {/* Settlements section — only if any */}
             {(totalSent > 0 || totalReceived > 0) && (
@@ -332,32 +338,42 @@ export default function MemberBalanceModal({
               </View>
             )}
 
-            {/* Final balance bar — only if there were settlements */}
-            {(totalSent > 0 || totalReceived > 0) && (
-              <View
-                style={[
-                  styles.resultBar,
-                  { backgroundColor: isSettled ? "rgba(22,163,74,0.10)" : "rgba(30,58,95,0.06)" },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.resultFormula,
-                    { color: isSettled ? "#166534" : colors.foreground },
-                  ]}
-                >
-                  Final balance
-                </Text>
-                <Text
-                  style={[
-                    styles.resultValue,
-                    { color: isSettled ? "#166534" : colors.foreground },
-                  ]}
-                >
-                  {fmtSigned(netFinal)}
-                </Text>
-              </View>
-            )}
+{/* Final balance bar — only if there were settlements */}
+{(totalSent > 0 || totalReceived > 0) && (
+  <View
+    style={[
+      styles.resultBar,
+      {
+        backgroundColor:
+          netFinal >= 0
+            ? "rgba(22,163,74,0.10)"
+            : "rgba(239,68,68,0.08)",
+      },
+    ]}
+  >
+    <Text
+      style={[
+        styles.resultFormula,
+        {
+          color: netFinal >= 0 ? "#166534" : "#991B1B",
+        },
+      ]}
+    >
+      Final balance
+    </Text>
+
+    <Text
+      style={[
+        styles.resultValue,
+        {
+          color: netFinal >= 0 ? "#166534" : "#991B1B",
+        },
+      ]}
+    >
+      {fmtSigned(netFinal)}
+    </Text>
+  </View>
+)}
 
             {/* Trust line */}
             <Text style={[styles.trustLine, { color: colors.mutedForeground }]}>
