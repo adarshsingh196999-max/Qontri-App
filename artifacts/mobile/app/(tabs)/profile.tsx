@@ -381,8 +381,8 @@ const topPad = Platform.OS === "web" ? 32 : insets.top;
         </Text>
         <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
-            { icon: "shield", label: "Privacy Policy", url: "https://qontri.in/privacy" },
-            { icon: "file-text", label: "Terms of Service", url: "https://qontri.in/terms" },
+{ icon: "shield", label: "Privacy Policy", url: "https://qontri.in/#privacy" },
+{ icon: "file-text", label: "Terms of Service", url: "https://qontri.in/#terms" },
           ].map((item, idx, arr) => (
             <Pressable
               key={item.label}
